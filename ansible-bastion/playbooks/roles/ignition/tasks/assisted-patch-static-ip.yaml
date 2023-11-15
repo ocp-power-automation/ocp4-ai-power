@@ -1,0 +1,17 @@
+- name: Copy assisted-static-ip.json
+  template: 
+    src:  ../templates/assisted-static-ip.json.j2
+    dest: "{{ workdir }}/assisted-static-ip.json"
+    
+- name: Patch cluster infra-envs for Static IPs
+  uri:
+    url: "{{ assisted_url }}/infra-envs/{{ assisted_infraenv_id }}"
+    method: PATCH
+    headers:
+      Content-Type: application/json
+      accept: application/json
+      Authorization: "{{ api_token }}"
+    src: "{{ workdir }}/assisted-static-ip.json"
+    body_format: json
+    return_content: yes
+    status_code: 201

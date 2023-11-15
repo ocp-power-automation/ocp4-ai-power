@@ -1,0 +1,27 @@
+---
+
+- name: Get access Token
+  include_tasks: ../../ignition/tasks/assisted-refresh-token.yaml
+
+- name: Get day2 cluster info from output json file
+  set_fact:
+    day2clusterdetails: '{{ lookup("file", "{{ workdir }}/assisted-day2-cluster-request-output.json") | from_json }}'
+
+- name: Show day2 cluster ID
+  debug:
+    msg: "{{ day2clusterdetails.id }}"
+
+- name: Get day2 cluster infraenv from output json file
+  set_fact:
+    day2infraenvdetails: '{{ lookup("file", "{{ workdir }}/assisted-day2-infraenv-request-output.json") | from_json }}'
+
+- name: Show day2 cluster ID
+  debug:
+    msg: "{{ day2infraenvdetails.id }}"
+
+- name: Add the day2 hosts to cluster
+  include_tasks: assisted-add.yaml
+
+- name: Approve CSRs for added hosts
+  include_tasks: assisted-csr.yaml
+  

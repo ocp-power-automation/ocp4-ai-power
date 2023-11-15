@@ -1,0 +1,26 @@
+- name: Generate assisted-tang.json
+  template: 
+    src:  ../templates/assisted-tang.json.j2
+    dest: "{{ workdir }}/assisted-tang.json"
+
+- name: Create tang_json string
+  set_fact:
+    tang_json: "{{ lookup('file', '{{ workdir }}/assisted-tang.json') | from_json | to_json }}"
+
+- name: Copy assisted-disk-encryption.json
+  template: 
+    src:  ../templates/assisted-disk-encryption.json.j2
+    dest: "{{ workdir }}/assisted-disk-encryption.json"
+    
+- name: Patch cluster for disk encryption
+  uri:
+    url: "{{ assisted_url }}/clusters/{{ assisted_cluster_id }}"
+    method: PATCH
+    headers:
+      Content-Type: application/json
+      accept: application/json
+      Authorization: "{{ api_token }}"
+    src: "{{ workdir }}/assisted-disk-encryption.json"
+    body_format: json
+    return_content: yes
+    status_code: 201

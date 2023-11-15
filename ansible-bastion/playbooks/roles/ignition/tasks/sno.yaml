@@ -1,0 +1,87 @@
+  - name: Generate install-config.yaml
+    template:
+      src: ../templates/install-config.yaml.j2
+      dest: "{{ workdir }}/install-config.yaml"
+
+  - name: backup the install-config.yaml
+    copy:
+      src: "{{ workdir }}/install-config.yaml"
+      dest: "{{ workdir }}/install-config.yaml.back"
+      remote_src: yes
+      force: yes
+
+  - name: Generate manifest files
+    shell: |
+      OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE={{ release_image_override }} openshift-install create manifests --log-level {{ log_level }}
+    args:
+      chdir: "{{ workdir }}"
+      
+  - name: Create Machine Config for disk encryption
+    when: luks.enabled|bool and luks.config|length > 0
+    vars:
+      role_n: '{{ item }}'
+    template:
+      src: ../templates/99-node-machineconfig.yaml.j2
+      dest: "{{ workdir }}/openshift/99-{{ item }}-machineconfig.yaml"
+    with_items:
+      - master
+      - worker
+
+  # - name: Setup network configuration
+  #   template:
+  #     src: ../templates/cluster-network-03-config.yml.j2
+  #     dest: "{{ workdir }}/manifests/cluster-network-03-config.yml"
+  #   when: cni_network_mtu is defined
+ 
+  - name: Configure RHCOS kernel options via MachineConfig before installation
+    when: rhcos_pre_kernel_options | length > 0
+    vars:
+      role_n: '{{ item }}'
+    template:
+      src: preinstall-node-kargs.yaml.j2
+      dest: "{{ workdir }}/manifests/preinstall-{{ item }}-kargs.yaml"
+    with_items:
+      - master
+      - worker
+  
+  - name: Remove the machine yaml files
+    file:
+      path: "{{ item }}"
+      state: absent
+    with_fileglob:
+      - "{{ workdir }}/openshift/99_openshift-cluster-api_master-machines-*.yaml"
+      - "{{ workdir }}/openshift/99_openshift-cluster-api_worker-machineset-*.yaml"
+
+  - name: Make the control-plane un-schedulable
+    lineinfile:
+      path: "{{ workdir }}/manifests/cluster-scheduler-02-config.yml"
+      regexp: '^(.*)mastersSchedulable: true'
+      line: '\1mastersSchedulable: False'
+      backrefs: yes
+    when: workers is defined and workers|length > 0
+
+  - name: Create ignition files for normal OCP
+    when: install_type == "normal"
+    shell: |
+      OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE={{ release_image_override }} openshift-install create ignition-configs --log-level {{ log_level }}
+    args:
+      chdir: "{{ workdir }}"
+  
+  - name: Create ignition file for SNO
+    when: install_type == "sno"
+    shell: |
+      OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE={{ release_image_override }} openshift-install create single-node-ignition-config --log-level {{ log_level }}
+      mv bootstrap-in-place-for-live-iso.ign sno.ign
+    args:
+      chdir: "{{ workdir }}"
+
+  - name: embed the ignition file to rhcos-live.iso
+    when: rhcos_iso is defined and force_ocp_download
+    shell: "coreos-installer iso ignition embed /usr/local/src/rhcos-live-{{ rhcos_arch }}.iso -o rhcos-sno-ign.iso -fi sno.ign"
+    args:
+      chdir: "{{ workdir }}"
+
+  # - name: Add ignition kernel args to rhcos-live.iso
+  #   shell: "coreos-installer iso kargs modify /usr/local/src/rhcos-live-{{ rhcos_arch }}.iso -o rhcos-sno-http-ign.iso -a ignition.config.url=http://{{ helper.ipaddr }}:8080/ignition/{{ install_type }}.ign"
+  #   args:
+  #     chdir: "{{ workdir }}"

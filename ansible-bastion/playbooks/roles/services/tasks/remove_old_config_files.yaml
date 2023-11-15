@@ -1,0 +1,20 @@
+
+- name: Remove existing dnsmasq config
+  file:
+    path: /etc/dnsmasq.conf
+    state: absent
+
+- name: Remove existing dnsmasq hosts config
+  file:
+    path: /etc/dnsmasq.d/addnhosts
+    state: absent
+
+- name: Remove existing grub.cfg
+  file:
+    path: /var/lib/tftpboot/boot/grub2/grub.cfg
+    state: absent
+
+- name: Remove existing haproxy config
+  file:
+    path: /etc/haproxy/haproxy.cfg
+    state: absent

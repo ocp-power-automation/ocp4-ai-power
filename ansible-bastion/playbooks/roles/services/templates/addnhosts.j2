@@ -1,0 +1,27 @@
+{{ helper.ipaddr }} registry
+{% if masters | length == 1 and bootstrap is not defined %}
+{{ masters[0].ipaddr }} {{ masters[0].name | lower }} api api-int
+{% else %}
+{% if dhcp.api_vip is defined %} 
+{{ dhcp.api_vip}} api api-int
+{% else %}
+{{ helper.ipaddr }} api api-int
+{% endif %}
+{% if bootstrap is defined %}
+{{ bootstrap.ipaddr }} {{ bootstrap.name | lower }}
+{% endif %}
+{% for m in masters %}
+{{ m.ipaddr }} {{ m.name | lower }}
+{% endfor %}
+{% if workers is defined and workers | length > 0 %}
+{% for w in workers %}
+{{ w.ipaddr }} {{ w.name | lower }}
+{% endfor %}
+{% endif %}
+{% if day2_workers is defined and day2_workers | length > 0 %}
+{% for w in day2_workers %}
+{{ w.ipaddr }} {{ w.name | lower }}
+{% endfor %}
+{% endif %}
+{% endif %}
+

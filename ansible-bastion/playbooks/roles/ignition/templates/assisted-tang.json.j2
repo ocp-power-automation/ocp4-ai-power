@@ -1,0 +1,12 @@
+[
+{% for item in luks.config  %}
+{% if item.thumbprint is not none and item.url is not none %}
+    {
+        "url": "{{ item.url }}",
+        "thumbprint": "{{ item.thumbprint}}"
+    }
+{% endif %}
+{% if not loop.last %},{% endif %}
+{% endfor %}
+]
+

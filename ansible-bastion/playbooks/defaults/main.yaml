@@ -1,0 +1,96 @@
+---
+# defaults file
+target: "powervc"
+workdir: ~/workdir-ocp4-ai
+rhcos_arch: ppc64le
+ocp_client_arch: ppc64le
+log_level: info
+release_image_override: ""
+enable_local_registry: false
+cni_network_provider: OVNKubernetes
+#cni_network_provider: OpenshiftSDN
+node_connection_timeout: 2700
+http_port: 8000
+disk: /dev/sda
+force_ocp_download: false
+enable_remote_rootfs: false
+kubeconfig_file: "{{ workdir }}/auth/kubeconfig"
+# Using static IP
+static_ip: false
+# enable stand along dhcpd
+enable_dhcp: false
+# install squid proxy on bastion
+setup_squid_proxy: false
+squid_http_port: 3128
+squid_proxy_url: "http://{{ helper.ipaddr | default(ansible_host) }}:{{ squid_http_port }}"
+# use a exist proxy server
+proxy_url: ""
+no_proxy: "127.0.0.1,{{ dhcp.subnet }},10.0.0.0/8,192.168.0.0/16"
+# set fips mode
+fips_compliant: false
+# storage_type could be: "" or "nfs"
+storage_type: ""
+########################
+# Disk encryption, if set it to true, ned to define tang
+# define tang used for disk encryption
+luks:
+  enabled: false
+  config:
+   - url: "http://9.114.97.111:7500"
+     thumbprint: "xxxxxxxxxxxxxx"
+   - url: "http://9.114.97.236:7500"
+     thumbprint: "xxxxxxxxxxxxxx"
+# disk encryption should the same as luks.enabled
+disk_encryption: "{{ luks.enabled }}"
+#####################################
+# set default install type
+install_config: agent
+openshift_installer: "openshift-install"
+#####################################
+# variables defined for assisted installer
+# assisted_url: define the assisted service access point
+# assisted_token: offline token for secure assisted service access, optional
+# assisted_ocp_version: OCP version to install
+# assisted_rhcos_version: RHCOS version to install
+#####################################
+# set default values for assisted install
+assisted_url: "https://api.openshift.com/api/assisted-install/v2"
+assisted_token: ""
+assisted_ocp_version: "4.14"
+assisted_rhcos_version: "4.14"
+assisted_exist_cluster: false
+# deploy with dual IP stack
+assisted_net_dualstack: false
+# deploy OpenShift Data Foundation
+assisted_deploy_odf_operator: false
+####################################
+# default place to find pull-secret and public key id_rsa.pub
+pull_secret: "{{ lookup('file', '~/.openshift/pull-secret') | from_json | to_json }}"
+public_ssh_key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+###################################
+# Variables for customization 
+rhcos_kernel_options: []
+sysctl_tuned_options: false
+powervm_rmc: false
+
+########################
+chronyconfig:
+  enabled: true
+  content:
+  - server: "{{ helper.ipaddr }}"
+    options: iburst
+
+
+########################
+# local registry
+setup_registry:
+  deploy: false
+  autosync_registry: true
+  registry_image: docker.io/ibmcom/registry-ppc64le:2.6.2.5
+  local_repo: "ocp4/openshift4"
+  product_repo: "openshift-release-dev"
+  release_name: "ocp-release"
+  release_tag: "4.14.0-ppc64le"
+
+
+

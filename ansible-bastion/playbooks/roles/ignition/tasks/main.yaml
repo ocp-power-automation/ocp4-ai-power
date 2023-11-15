@@ -1,0 +1,89 @@
+---
+# file: main.yaml tasks file for ocp4 config
+- name: set facts
+  include: set_facts.yaml
+
+- name: check install workdir exist 
+  stat:
+    path: "{{ workdir }}"
+  register: dir_status
+
+- debug:
+    msg: "{{ dir_status }}"
+
+- meta: end_play
+  when: dir_status.stat.exists
+
+- name: Setup openshift workdir {{ workdir }}
+  file:
+    path: "{{ workdir }}"
+    state: "{{ item }}"
+    mode: '0755'
+  with_items:
+  - directory
+
+- name: Setup for agent based installer
+  when: install_type == "agent"
+  include: agent.yaml
+
+- name: Setup for assisted installer
+  when: install_type == "assisted"
+  include: assisted.yaml
+
+- name: Setup for SNO install
+  when: (install_type == "sno") or (install_type == "normal")
+  include: sno.yaml
+
+- name: Get pxe files and ignition from ISO
+  when: install_type == "agent" or install_type == "assisted"
+  shell: |
+    coreos-installer iso ignition show {{ install_type }}.iso > {{ install_type }}.ign
+    coreos-installer iso extract pxe {{ install_type }}.iso
+  args:
+    chdir: "{{ workdir }}"
+
+- name: Copy pxe files to right place
+  when: force_ocp_download != true and (install_type == "agent" or install_type == "assisted")
+  block:
+  - name: Host initramfs.img
+    become: true
+    copy:
+      src: "{{ workdir }}/{{ install_type }}-initrd.img"
+      dest: /var/lib/tftpboot/rhcos/initramfs.img
+      mode: o+r
+  - name: Host kernel
+    become: true
+    copy:
+      src: "{{ workdir }}/{{ install_type }}-vmlinuz"
+      dest: /var/lib/tftpboot/rhcos/kernel
+      mode: o+r
+  - name: Host rootfs.img
+    become: true
+    copy:
+      src: "{{ workdir }}/{{ install_type }}-rootfs.img"
+      dest: /var/www/html/install/rootfs.img
+      mode: o+rx
+
+- name: Host ignition files
+  become: true
+  copy:
+    src: "{{ item }}"
+    dest: /var/www/html/ignition/
+    mode: o+r
+  with_fileglob:
+    - "{{ workdir }}/*.ign"
+
+- name: Best effort SELinux repair - Apache
+  become: true
+  shell: "restorecon -vR /var/www/html || true"
+
+- name: mkdir ~/.kube
+  file:
+    path: ~/.kube
+    state: directory
+
+- name: Install kubeconfig
+  copy:
+    src: "{{ workdir }}/auth/kubeconfig"
+    dest: "~/.kube/config"
+  when: install_type != "assisted"

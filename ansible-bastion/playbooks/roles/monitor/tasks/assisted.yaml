@@ -1,0 +1,37 @@
+---
+- name: Get access Token
+  include_tasks: ../../ignition/tasks/assisted-refresh-token.yaml
+
+- name: Get cluster info from output json file
+  set_fact:
+    cluster_info: '{{ lookup("file", "{{ workdir }}/assisted-cluster-create-output.json") | from_json }}'
+
+- name: Show cluster ID
+  debug:
+    msg: "{{ cluster_info.id }}"
+
+- name: Get cluster infraenv info from output json file
+  set_fact:
+    infraenv_info: '{{ lookup("file", "{{ workdir }}/assisted-infraenv-register-output.json") | from_json }}'
+
+- name: Show cluster infraenv ID
+  debug:
+    msg: "{{ infraenv_info.id }}"
+
+- name: Show node count
+  debug:
+    msg: "master:{{ master_count }}, worker:{{ worker_count }}, total: {{ master_count | int + worker_count | int }}"
+
+- name: Discover Hosts and Patch Cluster
+  include_tasks: assisted-patch-cluster.yaml
+
+- name: Start Cluster Installation and download the kubeconfig
+  include_tasks: assisted-start-installation.yaml
+
+- name: Wait till OpenShift cluster installed.
+  include_tasks:  assisted-check-installation.yaml
+  loop: "{{ range(1,20,1) | list}}"
+
+
+
+

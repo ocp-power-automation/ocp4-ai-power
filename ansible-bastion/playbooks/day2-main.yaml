@@ -1,0 +1,28 @@
+---
+# file: add-workers.yaml
+
+- name: Setup services for bastion
+  hosts: bastion
+  vars_files:
+    - defaults/main.yaml
+  handlers:
+  - import_tasks: handlers/main.yml
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  vars:
+    force_ocp_download: false
+  roles:
+  - services
+
+- name: Do day2 tasks to add more workers to exist cluster
+  hosts: bastion
+  vars_files:
+    - defaults/main.yaml
+  become: false
+  gather_facts: false
+  any_errors_fatal: true
+  vars:
+    kubeconfig_file: "{{ workdir}}/auth/kubeconfig"
+  roles:
+  - day2

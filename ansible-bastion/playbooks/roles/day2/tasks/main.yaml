@@ -1,0 +1,30 @@
+---
+- name: Get install workdir status 
+  stat:
+    path: "{{ workdir }}"
+  register: dir_status
+
+- debug:
+    msg: "dir status: {{ dir_status.stat.exists }}"
+
+- name: Check if {{ workdir }} does not exist
+  meta: end_play
+  when: not dir_status.stat.exists|bool
+
+- name: Day2 for assisted installer
+  when: install_type == "assisted"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_file }}"
+  include: assisted.yaml
+
+- name: Day2 for agent based installer
+  when: install_type == "agent"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_file }}"
+  include: agent.yaml
+
+- name: Day2 for SNO install
+  when: install_type == "sno" or install_type == "normal"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_file }}"
+  include: sno.yaml

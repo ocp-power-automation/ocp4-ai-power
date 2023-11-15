@@ -1,0 +1,45 @@
+#authoritative;
+ddns-update-style interim;
+default-lease-time 14400;
+max-lease-time 14400;
+
+option routers                  {{ dhcp.router }};
+option broadcast-address        {{ dhcp.bcast }};
+option subnet-mask              {{ dhcp.netmask }};
+option domain-name-servers      {{ helper.ipaddr }};
+option domain-name              "{{ dns.clusterid }}.{{ dns.domain | lower }}";    
+
+subnet {{ dhcp.subnet.split('/').0 }} netmask {{ dhcp.netmask }} {
+    interface {{ networkifacename }};
+    #pool {
+        #range {{ dhcp.poolstart | default( masters[0].ipaddr ) }} {{ dhcp.poolend | default( masters[0].ipaddr ) }};
+
+        # Static entries
+{% if bootstrap is defined %}
+        host {{ bootstrap.name | lower }} { hardware ethernet {{ bootstrap.macaddr }}; fixed-address {{ bootstrap.ipaddr }}; }
+{% endif %}
+{% for m in masters %}
+        host {{ m.name | lower }} { hardware ethernet {{ m.macaddr }}; fixed-address {{ m.ipaddr }}; }
+{% endfor %}
+
+{% if workers is defined %}
+{% for w in workers %}
+        host {{ w.name | lower }} { hardware ethernet {{ w.macaddr }}; fixed-address {{ w.ipaddr }}; }
+{% endfor %}
+{% endif %}
+
+{% if day2_workers is defined and day2_workers | length > 0 %}
+{% for d2 in day2_workers %}
+        host {{ d2.name }} { hardware ethernet {{ d2.macaddr }}; fixed-address {{ d2.ipaddr }}; }
+{% endfor %}
+{% endif %}
+
+        # this will not give out addresses to hosts not listed above
+        #deny unknown-clients;
+
+        # this is PXE specific
+        filename "boot/grub2/powerpc-ieee1275/core.elf";
+
+        next-server {{ helper.ipaddr }};
+    #}
+}

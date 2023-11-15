@@ -1,0 +1,54 @@
+---
+- name: Set dynamic IP 
+  block:
+  #   - assert:
+  #       that: static_ip|bool
+  #   - set_fact:
+  #       ip_config: "ip={{ ipaddr }}::{{ dhcp.router }}:{{ dhcp.netmask }}::eth0:none nameserver={{ helper.ipaddr }}"
+  # rescue:
+    - set_fact:
+        ip_config: "ip=dhcp"
+
+- name: create grub2 block for Assisted/Agent/SNO
+  when: (install_type == "assisted") or (install_type == "agent") or (install_type == "sno" and day2_workers is not defined)  
+  blockinfile:
+    marker: ""
+    content: |
+      if [ ${net_default_mac} == {{ mac }} ]; then
+      default=0
+      fallback=1
+      timeout=1
+      menuentry "CoreOS (BIOS)" {
+         echo "Loading kernel"
+         linux "/rhcos/kernel" {{ ip_config }} console=tty0 console=ttyS0 console=hvc0,115200n8 rd.neednet=1 ignition.platform.id=metal ignition.firstboot {{ coreos_inst_url }} ignition.config.url={{ ignition_url }}/{{ ignition }}
+
+         echo "Loading initrd"
+         initrd  "/rhcos/initramfs.img"
+      }
+      fi
+    dest: /var/lib/tftpboot/boot/grub2/grub.cfg
+
+- name: create grub2 block for normal OCP
+  when: (install_type == "normal") or (install_type == "sno" and day2_workers is defined and day2_workers|length > 0)
+  blockinfile:
+    marker: ""
+    content: |
+      if [ ${net_default_mac} == {{ mac }} ]; then
+      default=0
+      fallback=1
+      timeout=1
+      menuentry "CoreOS (BIOS)" {
+         echo "Loading kernel for {{ name }}"
+         linux "/rhcos/kernel" {{ ip_config }} console=tty0 console=ttyS0 console=hvc0,115200n8 rd.neednet=1 {{ multipath }} coreos.inst=yes coreos.inst.install_dev={{ mdisk }} {{ coreos_inst_url }} coreos.inst.ignition_url={{ ignition_url }}/{{ role }}.ign ignition.config.url={{ ignition_url }}/first-boot-ppc64le-{{ name }}.ign
+
+         echo "Loading initrd"
+         initrd  "/rhcos/initramfs.img"
+      }
+      fi
+    dest: /var/lib/tftpboot/boot/grub2/grub.cfg
+
+- name: Copy first-boot-ppc64le-{{ name }}.ign to /www/html/ignition
+  when: install_type == "normal" or (install_type == "sno" and day2_workers is defined and day2_workers|length > 0)
+  template:
+    src: templates/first-boot-ppc64le.ign.j2
+    dest: "/var/www/html/ignition/first-boot-ppc64le-{{ name }}.ign"

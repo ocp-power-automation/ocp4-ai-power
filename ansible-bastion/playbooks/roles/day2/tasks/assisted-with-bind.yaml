@@ -1,0 +1,243 @@
+---
+
+- name: Get access Token
+  include_tasks: ../../ignition/tasks/assisted-refresh-token.yaml
+
+- name: Get cluster info from output json file
+  set_fact:
+    cluster_info: '{{ lookup("file", "{{ workdir }}/assisted-create-output.json") | from_json }}'
+
+- name: Show cluster ID
+  debug:
+    msg: "{{ cluster_info.id }}"
+
+- name: Get cluster infraenv info from output json file
+  set_fact:
+    infraenv_info: '{{ lookup("file", "{{ workdir }}/assisted-register-output.json") | from_json }}'
+
+- name: Show cluster infraenv ID
+  debug:
+    msg: "{{ infraenv_info.id }}"
+
+- name: create day2-infraenv-request.json.j2
+  template:
+    src: ../templates/infraenv-request.json.j2
+    dest: "{{ workdir }}/day2-infraenv-request.json"
+
+- name: Creates Day2 Infra Env for Cluster.
+  uri:
+    url: "{{ assisted_url }}/infra-envs"
+    method: POST
+    headers:
+      Content-Type: application/json
+      accept: application/json
+      Authorization: "{{ api_token }}"
+    src: "{{ workdir }}/day2-infraenv-request.json"
+    body_format: json
+    return_content: yes
+    status_code: 201
+    validate_certs: "{{ assisted_token != '' }}"
+  register: day2infraenvdetails
+
+- name: Print Day2 InfraEnv ID
+  debug:
+    msg: "Day2 InfraEnv ID is {{ day2infraenvdetails.json.id }}"
+
+- name: Save day2 infraenv output to file
+  copy: 
+    content:  "{{ day2infraenvdetails.json }}"
+    dest: "{{ workdir }}/day2-assisted-infraenv-output.json"
+
+- name: URL for Day2 Assisted Installer ISO Image
+  set_fact:
+    day2_infraenv_iso_url: "{{ day2infraenvdetails.json.download_url }}"
+
+- name: Downloads the Day 2 OpenShift per-cluster discovery ISO for API based deployment.
+  get_url:
+    url: "{{ day2_infraenv_iso_url }}"
+    headers:
+      Authorization: "{{ api_token }}"
+    dest: "{{ workdir }}/day2-{{install_type}}.iso"
+    force: yes
+    validate_certs: "{{ assisted_token != '' }}"
+
+- name: Get ignition from ISO
+  shell: |
+    coreos-installer iso ignition show day2-{{ install_type }}.iso > day2-{{ install_type }}.ign
+  args:
+    chdir: "{{ workdir }}"
+
+- name: Host ignition files
+  become: true
+  copy:
+    src: "{{ item }}"
+    dest: /var/www/html/ignition/
+    mode: o+r
+  with_fileglob:
+    - "{{ workdir }}/day2-{{ install_type }}.ign"
+
+- name: Boot Workers with Day2 ISO image
+  include_tasks: netboot.yaml
+
+- name: Wait for at least one Day2 worker to be discovered in Assisted Installer
+  uri:
+    url: "{{ assisted_url }}/clusters/{{ cluster_info.id }}"
+    method: GET
+    headers:
+      accept: application/json
+      Authorization: "{{ api_token }}"
+    return_content: yes
+    status_code: 200
+    validate_certs: "{{ assisted_token != '' }}"
+  register: day2ocpcluster
+  until: day2ocpcluster.json.host_networks|length > 0
+  delay: 20
+  retries: 50
+
+- name: Retrieve Day2 OpenShift bare metal hosts list
+  uri:
+    url: "{{ assisted_url }}/infra-envs/{{ day2infraenvdetails.json.id }}/hosts"
+    method: GET
+    headers:
+      accept: application/json
+      Authorization: "{{ api_token }}"
+    return_content: yes
+    status_code: 200
+    validate_certs: "{{ assisted_token != '' }}"
+  register: day2ocphosts
+
+- name: Wait till Day2 OpenShift bare metal hosts are in known status
+  uri:
+    url: "{{ assisted_url }}/infra-envs/{{ day2infraenvdetails.json.id }}/hosts/{{ item }}"
+    method: GET
+    headers:
+      accept: application/json
+      Authorization: "{{ api_token }}"
+    return_content: yes
+    status_code: 200
+    validate_certs: "{{ assisted_token != '' }}"
+  register: day2ocphostsid
+  until: "day2ocphostsid.json.status == 'known'"
+  loop: "{{ day2ocphosts.json|json_query('[*].id')|list }}"
+  delay: 20
+  retries: 50
+
+- name: create day2-cluster-request.json.j2
+  template:
+    src: ../templates/cluster-request.json.j2
+    dest: "{{ workdir }}/day2-cluster-request.json"
+
+- name: Creates a Day2 cluster definition.
+  uri:
+    url: "{{ assisted_url }}/clusters/import"
+    method: POST
+    headers:
+      Content-Type: application/json
+      accept: application/json
+      Authorization: "{{ api_token }}"
+    src: "{{ workdir }}/day2-cluster-request.json"
+    body_format: json
+    return_content: yes
+    status_code: 201
+  register: day2clusterdetails
+
+# - name: Print Day2 Cluster ID
+#   debug:
+#     msg: "Day2 Cluster ID is {{ day2clusterdetails.json.id }}"
+
+- name: Save day2 cluster output to file
+  copy: 
+    content:  "{{ day2clusterdetails.json }}"
+    dest: "{{ workdir }}/day2-assisted-cluster-output.json"
+
+- name: Bind day2 hosts to Cluster
+  uri:
+    url: "{{ assisted_url }}/infra-envs/{{ day2infraenvdetails.json.id }}/hosts/{{ item }}/actions/bind"
+    method: POST
+    headers:
+      accept: application/json
+      Authorization: "{{ api_token }}"
+    body:: '{"cluster_id":"{{ cluster_info.id }}"}'
+    body_format: json
+    return_content: yes
+    status_code: 202
+    validate_certs: "{{ assisted_token != '' }}"
+  register: day2ocphostsid
+  until: "day2ocphostsid.json.status == 'known'"
+  loop: "{{ day2ocphosts.json|json_query('[*].id')|list }}"
+  delay: 20
+  retries: 50
+
+- name: Install Day2 OpenShift bare metal hosts
+  uri:
+    url: "{{ assisted_url }}/infra-envs/{{ day2infraenvdetails.json.id }}/hosts/{{ item }}/actions/install"
+    method: POST
+    headers:
+      accept: application/json
+      Authorization: "{{ api_token }}"
+    return_content: yes
+    status_code: 202
+    validate_certs: "{{ assisted_token != '' }}"
+  loop: "{{ day2ocphosts.json|json_query('[*].id')|list }}"
+
+- name: Wait till Day2 OpenShift bare metal hosts are added-to-existing-cluster
+  uri:
+    url: "{{ assisted_url }}/infra-envs/{{ day2infraenvdetails.json.id }}/hosts/{{ item }}"
+    method: GET
+    headers:
+      accept: application/json
+      Authorization: "{{ api_token }}"
+    return_content: yes
+    status_code: 200
+    validate_certs: "{{ assisted_token != '' }}"
+  register: day2ocphostsid
+  until: "day2ocphostsid.json.status == 'added-to-existing-cluster'"
+  loop: "{{ day2ocphosts.json|json_query('[*].id')|list }}"
+  delay: 20
+  retries: 50
+
+- name: Wait for bootstrap CSR request
+  environment:
+    KUBECONFIG: "{{ kubeconfig_file }}"
+  shell: |
+    oc get csr | awk '/node-bootstrapper.*Pending/ { print $1 }'
+  register: csrName
+  until: (csrName.stdout_lines | length) != 0
+  retries: 30
+  delay: 30
+
+- name: Approve bootstrap CSR
+  environment:
+    KUBECONFIG: "{{ kubeconfig_file }}"
+  shell: |
+    oc adm certificate approve "{{ item }}"
+  loop: "{{ csrName.stdout_lines | flatten }}"
+
+- name: Wait for node CSR request
+  environment:
+    KUBECONFIG: "{{ kubeconfig_file }}"
+  shell: |
+     oc get csr | awk  '/worker-0.*Pending/ { print $1 }'
+  register: nodeCsrName
+  until:  nodeCsrName.stdout|length != 0
+  delay: 30
+  retries: 30
+
+- name: Approve node CSR
+  environment:
+    KUBECONFIG: "{{ kubeconfig_file }}"
+  shell: |
+    oc adm certificate approve "{{ item }}"
+  loop: "{{ nodeCsrName.stdout_lines | flatten}}"
+
+- name: Ensure all hosts added to OS cluster
+  environment:
+    KUBECONFIG: "{{ kubeconfig_file }}"
+  shell: |
+    oc get node "{{ item.name }}" --no-headers
+  register: cluster_nodes
+  with_items: "{{ day2_workers }}"
+  until:
+  - '" Ready " in cluster_nodes.stdout'
+  retries: 30
+  delay: 30

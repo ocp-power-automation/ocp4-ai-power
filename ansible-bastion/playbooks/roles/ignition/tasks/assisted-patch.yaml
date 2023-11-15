@@ -1,0 +1,28 @@
+################## patch cluster ##################
+- name: Patch OpenShift bare metal cluster to enable ODF
+  when: assisted_deploy_odf_operator|bool
+  uri:
+    url: "{{ assisted_url }}/clusters/{{ assisted_cluster_id }}"
+    method: PATCH
+    headers:
+      Content-Type: application/json
+      accept: application/json
+      Authorization: "{{ api_token }}"
+    body:
+      olm_operators:
+      - name: "ocs"
+    body_format: json
+    return_content: yes
+    status_code: 201
+
+- name: Patch cluster for disk encryption
+  when: luks.enabled|bool and luks.config|length > 0
+  import_tasks: assisted-patch-disk.yaml
+    
+- name: Patch cluster for static-ip.json
+  when: static_ip is defined and static_ip|bool
+  import_tasks: assisted-patch-static-ip.yaml
+
+- name: Patch discovery ignition for pass RH VPN
+  when: ("api.integration" in assisted_url) or ("api.stage" in assisted_url)
+  import_tasks: assisted-patch-rh-vpn.yaml

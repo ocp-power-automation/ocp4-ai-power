@@ -1,0 +1,23 @@
+- set_fact:
+    master_count: "{{ masters | length }}"
+    worker_count: "{{ workers | default([]) | length }}"
+
+- name: Monitor for agent based installer
+  when: install_type == "agent"
+  include: agent.yaml
+
+- name: Monitor for assisted installer
+  when: install_type == "assisted"
+  include: assisted.yaml
+
+- name: Monitor for SNO install
+  when: install_type == "sno" or install_type == "normal"
+  include: sno.yaml
+
+- name: Wait ODF Ready
+  when: assisted_deploy_odf_operator|bool
+  include: wait-odf.yaml
+  
+- name: Post install process
+  when: storage_type is defined and storage_type == "nfs"
+  include: post-nfs.yaml

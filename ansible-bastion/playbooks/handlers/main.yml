@@ -1,0 +1,42 @@
+---
+# handlers file for tester
+- name: restart dnsmasq
+  service:
+    name: dnsmasq
+    state: restarted
+
+- name: restart dhcpd
+  service:
+    name: dhcpd
+    state: restarted
+
+- name: restart httpd
+  service:
+    name: httpd
+    state: restarted
+
+- name: restart nfs
+  service:
+    name: nfs-server
+    state: restarted
+
+- name: restart squid
+  service:
+    name: squid
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
+
+- name: restart firewalld
+  service:
+    name: firewalld
+    state: restarted
+    enabled: yes
+
+- name: restart chrony
+  become: true
+  service:
+    name: chronyd
+    state: restarted
+    daemon_reload: yes
+    enabled: yes

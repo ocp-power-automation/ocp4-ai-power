@@ -1,0 +1,21 @@
+- name: Wait for installation to start
+  block:
+  - name: Check installation status
+    uri:
+      url: "{{ api_url }}/clusters/{{ cluster_id }}"
+      method: GET
+      body_format: json
+      return_content: yes
+      status_code: 200
+    register: cluster_status
+    until: cluster_status.json.status == "installing"
+    retries: 30
+    delay: 30
+
+  rescue:
+    - name: Fail if cluster wasn't started yet
+      fail:
+        msg: "Cluster failed to start. Cluster ended up with status: {{ cluster_status.json.status }}"
+      when:
+        - cluster_status.status|default('None') == 200
+        - cluster_status.json.status|default('None') != 'installing'

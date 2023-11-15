@@ -1,0 +1,61 @@
+{
+    "base_dns_domain": "{{ dns.domain | lower }}",
+    "name": "{{ dns.clusterid }}",
+    "cpu_architecture": "{{ rhcos_arch }}",
+    "openshift_version": "{{ assisted_ocp_version }}",
+    {% if masters | length == 1 %}
+    "high_availability_mode": "None",
+    {% else %}
+    "high_availability_mode": "Full",
+    {% endif %}
+    "network_type": "{{ cni_network_provider }}",
+    "user_managed_networking": true,
+    "ssh_public_key": "{{ public_ssh_key }}",
+    "pull_secret": {{ pull_secret | to_json }},
+    {% if assisted_net_dualstack|bool %}
+    "cluster_networks": [
+    {
+      "cidr": "10.128.0.0/14",
+      "host_prefix": 23
+    },
+    {
+      "cidr": "fd01::/48",
+      "host_prefix": 64
+    }
+    ],
+    "service_networks": [
+    {
+      "cidr": "172.30.0.0/16"
+    },
+    {
+      "cidr": "fd02::/112"
+    }
+    ],
+    "machine_networks": [
+    {
+        "cidr": "{{ dhcp.subnet }}"
+    },
+    {
+        "cidr": "{{ dhcp.subnet_ipv6 }}"
+    }
+    ]
+    {% else %}
+    {% if dhcp.api_vip is defined %}
+    "user_managed_networking": false,
+    "api_vip": "{{ dhcp.api_vip }}",
+    "api_vips": [ 
+        {  "ip": "{{ dhcp.api_vip }}" }
+    ],
+    {% if dhcp.ingress_vip is defined %}
+    "ingress_vip": "{{ dhcp.ingress_vip }}",
+    "ingress_vips": [ 
+        { "ip": "{{ dhcp.ingress_vip }}" }
+    ],
+    {% endif %}
+    {% endif %}
+    "cluster_network_cidr": "10.128.0.0/14",
+    "cluster_network_host_prefix": 23,
+    "service_network_cidr": "172.30.0.0/16"
+    {% endif %}
+}
+

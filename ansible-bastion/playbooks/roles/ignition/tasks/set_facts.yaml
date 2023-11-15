@@ -1,0 +1,15 @@
+---
+
+- name: set up vars for registry
+  when: setup_registry is defined and setup_registry.deploy
+  block:
+  - set_fact:
+      registry_host: "registry.{{ dns.clusterid }}.{{ dns.domain | lower  }}"
+      local_registry: "registry.{{ dns.clusterid }}.{{ dns.domain | lower  }}:5000"
+      release_image: "{{ setup_registry.remote_registry | default('quay.io') }}/{{ setup_registry.product_repo }}/{{ setup_registry.release_name }}:{{ setup_registry.release_tag }}"
+
+- name: setup vars for squid proxy
+  when: setup_squid_proxy 
+  block:
+  - set_fact:
+      squid_proxy_url: "http://{{ helper.ipaddr | default(ansible_host) }}:{{ squid_http_port }}"

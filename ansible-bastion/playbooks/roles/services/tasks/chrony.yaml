@@ -1,0 +1,71 @@
+- name: Install chrony on bastion
+  yum:
+    name: chrony
+    state: present
+
+- name: Configure chrony to synchronize with ntp servers
+  lineinfile:
+    path: /etc/chrony.conf
+    regexp: '^server {{ item.server }} '
+    state: present
+    line: "server {{ item.server }} {{ item.options | default('iburst') }}"
+    insertafter: 'server '
+    backup: yes
+  loop: "{{ chronyconfig.content }}"
+  when:
+    - chronyconfig.content is defined
+    - chronyconfig.content[0].server is defined
+  notify:
+    - restart chrony
+
+- name: Remove Chrony default pool when ntp server are used
+  lineinfile:
+    path: /etc/chrony.conf
+    regexp: '^pool .*\.rhel\.pool\.ntp\.org'
+    state: absent
+    backup: yes
+  when:
+    - chronyconfig.content is defined
+    - chronyconfig.content[0].server is defined
+  notify:
+    - restart chrony
+
+- name: Allow local stratum in chrony.conf on bastion
+  lineinfile:
+    path: /etc/chrony.conf
+    regexp: '^local stratum'
+    state: present
+    line: "local stratum 10"
+    insertafter: '^#local stratum'
+    backup: yes
+  notify:
+    - restart chrony
+
+- name: Allow Cluster Network in chrony.conf on bastion
+  lineinfile:
+    path: /etc/chrony.conf
+    regexp: '^allow'
+    state: present
+    line: "allow {{ item }}"
+    insertafter: '^#allow'
+    backup: yes
+  loop: "{{ chronyconfig.allow }}"
+  when:
+    - chronyconfig.allow is defined
+    - chronyconfig.allow[0] is defined
+  notify:
+    - restart chrony
+
+- name: Create chrony dropin directory
+  file:
+    path: /etc/systemd/system/chronyd.service.d
+    state: directory
+    mode: 0755
+  become: true
+
+- name: Copy restart conf file to the chrony dropin directory
+  copy:
+    src: ../files/restart.conf
+    dest: /etc/systemd/system/chronyd.service.d/restart.conf
+  notify:
+    - restart chrony

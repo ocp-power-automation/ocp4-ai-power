@@ -1,0 +1,45 @@
+- name: Wait for bootstrap CSR request
+  environment:
+    KUBECONFIG: "{{ kubeconfig_file }}"
+  shell: |
+    oc get csr | awk '/node-bootstrapper.*Pending/ { print $1 }'
+  register: csrName
+  until: (csrName.stdout_lines | length) != 0
+  retries: 50
+  delay: 30
+
+- name: Approve bootstrap CSR
+  environment:
+    KUBECONFIG: "{{ kubeconfig_file }}"
+  shell: |
+    oc adm certificate approve "{{ item }}"
+  loop: "{{ csrName.stdout_lines | flatten }}"
+
+- name: Wait for node CSR request
+  environment:
+    KUBECONFIG: "{{ kubeconfig_file }}"
+  shell: |
+     oc get csr | awk  '/worker.*Pending/ { print $1 }'
+  register: nodeCsrName
+  until:  nodeCsrName.stdout_lines|length == day2_workers|length
+  delay: 50
+  retries: 30
+
+- name: Approve node CSR
+  environment:
+    KUBECONFIG: "{{ kubeconfig_file }}"
+  shell: |
+    oc adm certificate approve "{{ item }}"
+  loop: "{{ nodeCsrName.stdout_lines | flatten}}"
+
+- name: Ensure all hosts added to OS cluster
+  environment:
+    KUBECONFIG: "{{ kubeconfig_file }}"
+  shell: |
+    oc get node "{{ item.name }}" --no-headers
+  register: cluster_nodes
+  with_items: "{{ day2_workers }}"
+  until:
+  - '" Ready " in cluster_nodes.stdout'
+  retries: 30
+  delay: 30

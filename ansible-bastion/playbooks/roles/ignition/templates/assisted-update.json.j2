@@ -1,0 +1,36 @@
+{
+    "vip_dhcp_allocation": false,
+    {% if dhcp.api_vip is defined %}
+    "user_managed_networking": false,
+    "api_vip": "{{ dhcp.api_vip }}",
+    "api_vips": [ 
+        {  "cluster_id": "{{ assisted_cluster_id }}",
+           "ip": "{{ dhcp.api_vip }}"
+        }
+    ],
+    {% if dhcp.ingress_vip is defined %}
+    "ingress_vip": "{{ dhcp.ingress_vip }}",
+    "ingress_vips": [ 
+        {  "cluster_id": "{{ assisted_cluster_id }}",
+           "ip": "{{ dhcp.ingress_vip }}"
+        }
+    ],
+    {% endif %}
+    {% else %}
+    "user_managed_networking": true,
+    {% endif %}
+    "service_networks": [
+      {
+        "cidr": "172.30.0.0/16",
+        "cluster_id": "{{ assisted_cluster_id }}"
+      }
+    ],
+    "cluster_networks": [
+      {
+        "cidr": "10.128.0.0/14",
+        "cluster_id": "{{ assisted_cluster_id }}",
+        "host_prefix": 23
+      }
+    ]
+}
+

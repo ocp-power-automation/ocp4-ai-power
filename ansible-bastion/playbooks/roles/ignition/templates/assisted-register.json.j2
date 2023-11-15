@@ -1,0 +1,9 @@
+{
+    "cluster_id": "{{ new_cluster_id }}",
+    "name": "{{ dns.clusterid }}_infra-env",
+    "cpu_architecture": "{{ rhcos_arch }}",
+    "openshift_version": "{{ assisted_rhcos_version }}",
+    "image_type": "full-iso",
+    "ssh_authorized_key": "{{ public_ssh_key }}",
+    "pull_secret": {{ pull_secret | to_json }}
+}

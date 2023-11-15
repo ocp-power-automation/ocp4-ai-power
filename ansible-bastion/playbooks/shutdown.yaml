@@ -1,0 +1,34 @@
+---
+# Boot up day2 worker nodes
+
+- hosts: localhost   
+  tasks:
+  - name: Shutdown bootstrap node
+    when: bootstrap is defined
+    shell: |
+      remote_cmd="chsysstate -m {{ bootstrap.pvmcec }} -n {{ bootstrap.pvmlpar }} -r lpar -o shutdown  --immed"
+      ssh -o StrictHostKeyChecking=no {{ pvm_hmc }} "${remote_cmd}"
+
+  - name: Shutdown master nodes
+    shell: |
+      remote_cmd="chsysstate -m {{ item.pvmcec }} -n {{ item.pvmlpar }} -r lpar -o shutdown  --immed"
+      ssh -o StrictHostKeyChecking=no {{ pvm_hmc }} "${remote_cmd}"
+    with_items: "{{ masters }}"
+
+  - name: Check if there are worker nodes
+    when: (workers is defined) and (workers|length > 0)
+    block:
+      - name: Shutdown worker nodes
+        shell: |
+          remote_cmd="chsysstate -m {{ item.pvmcec }} -n {{ item.pvmlpar }} -r lpar -o shutdown  --immed"
+          ssh -o StrictHostKeyChecking=no {{ pvm_hmc }} "${remote_cmd}"
+        with_items: "{{ workers }}"
+
+  - name: Check if there are day2_workers
+    when: (day2_workers is defined) and (day2_workers|length > 0)
+    block:
+      - name: Shutdown day2 worker nodes
+        shell: |
+          remote_cmd="chsysstate -m {{ item.pvmcec }} -n {{ item.pvmlpar }} -r lpar -o shutdown  --immed"
+          ssh -o StrictHostKeyChecking=no {{ pvm_hmc }} "${remote_cmd}"
+        with_items: "{{ day2_workers }}"

@@ -1,0 +1,69 @@
+- name: Get day1 cluster info from output json file
+  set_fact:
+    day1_cluster_info: '{{ lookup("file", "{{ workdir }}/assisted-create-output.json") | from_json }}'
+
+- name: Show day1 cluster ID
+  debug:
+    msg: "{{ day1_cluster_info.id }}"
+
+- name: Get day1 cluster infraenv info from output json file
+  set_fact:
+    day1_infraenv_info: '{{ lookup("file", "{{ work_dir }}/assisted-register-output.json") | from_json }}'
+
+- name: Show day1 cluster infraenv ID
+  debug:
+    msg: "{{ day1_infraenv_info.id }}"
+
+- name: allow to add new host nodes
+  uri:
+      url: "{{ assisted_url }}/clusters/{{ day1_cluster_info.id }}/action/allow-add-hosts"
+      method: POST
+      headers:
+        Content-Type: application/json
+        accept: application/json
+        Authorization: "{{ api_token }}"
+      body_format: json
+      return_content: yes
+      status_code: 202
+  register: allowAddHosts
+
+- name: Retrieve Day2 discovery ISO URL
+  uri:
+    url: "{{ assisted_url }}/infra-envs/{{ day1_infraenv_info.id }}/downloads/image-url"
+    method: GET
+    headers:
+      accept: application/json
+      Authorization: "{{ api_token }}"
+    return_content: yes
+    status_code: 200
+    validate_certs: "{{ assisted_token != '' }}"
+  register: day2_iso_url_json
+
+- name: URL for Day2 Assisted Installer ISO Image
+  set_fact:
+    day2_infraenv_iso_url: "{{   day2_iso_url_json.json.url }}"
+
+- name: Downloads the Day 2 OpenShift per-cluster discovery ISO for API based deployment.
+  get_url:
+    url: "{{ day2_infraenv_iso_url }}"
+    headers:
+      Authorization: "{{ api_token }}"
+    dest: "{{ workdir }}/{{install_type}}-day2.iso"
+    force: yes
+    validate_certs: "{{ assisted_token != '' }}"
+
+- name: Get ignition from ISO
+  shell: |
+    coreos-installer iso ignition show {{ install_type }}-day2.iso > {{ install_type }}-day2.ign
+  args:
+    chdir: "{{ workdir }}"
+
+- name: Host ignition files
+  become: true
+  copy:
+    src: "{{ item }}"
+    dest: /var/www/html/ignition/
+    mode: o+r
+  with_fileglob:
+    - "{{ workdir }}/{{ install_type }}-day2.ign"
+

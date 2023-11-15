@@ -1,0 +1,76 @@
+apiVersion: v1
+baseDomain: {{ dns.domain }}
+compute:
+- hyperthreading: Enabled
+  architecture: {{ rhcos_arch }}
+  name: worker
+  replicas: {{ workers | default([]) | length }}
+controlPlane:
+  hyperthreading: Enabled
+  architecture: {{ rhcos_arch }}
+  name: master
+  replicas: {{ masters | length }}
+metadata:
+  name: {{ dns.clusterid }}
+networking:
+  clusterNetwork:
+  - cidr: 10.128.0.0/14
+    hostPrefix: 23
+  networkType: {{ cni_network_provider }}
+  serviceNetwork:
+  - 172.30.0.0/16
+  machineNetwork:
+  - cidr: {{ dhcp.subnet }}
+platform:
+{% if dhcp.api_vip is not defined %}
+  none: {}
+{% else %}
+  baremetal:
+    hosts:
+{% for m in masters %}
+      - name: {{ m.name }}
+        role: master
+        bootMACAddress: {{ m.macaddr }}
+{% endfor %}
+{% if workers is defined and workers | length > 0 %}
+{% for w in workers %}
+      - name: {{ w.name }}
+        role: worker
+        bootMACAddress: {{ w.macaddr }}
+{% endfor %}
+{% endif %}
+{% if dhcp.api_vip is defined %}
+    apiVIPs: 
+      - {{ dhcp.api_vip }}
+{% if dhcp.ingress_vip is defined %}
+    ingressVIPs: 
+      - {{ dhcp.ingress_vip }}
+{% endif %}
+{% endif %}
+{% endif %}
+{% if install_type == "sno" %}
+bootstrapInPlace:
+  installationDisk: {{ masters[0].disk | default( disk ) }}
+{% endif %}
+sshKey: '{{ public_ssh_key }}'
+{% if setup_registry.deploy %}
+pullSecret: '{{ lookup('file', '~/.openshift/pull-secret-updated') }}'
+additionalTrustBundle: |
+{{ lookup('file', '/opt/registry/certs/domain.crt') | indent(2, first=True) }}
+imageContentSources:
+- mirrors:
+  - {{ local_registry }}/ocp4/openshift4
+  source: quay.io/openshift-release-dev/ocp-release
+- mirrors:
+  - {{ local_registry }}/ocp4/openshift4
+  source: quay.io/openshift-release-dev/ocp-v4.0-art-dev
+{% else %}
+pullSecret: '{{ pull_secret }}'
+{% endif %}
+{% if setup_squid_proxy or proxy_url != "" %}
+proxy:
+  httpProxy: {{ squid_proxy_url | default(proxy_url) }}
+  httpsProxy: {{ squid_proxy_url | default(proxy_url) }}
+  noProxy: .{{ dns.clusterid }}.{{ dns.domain }},{{ no_proxy }}
+{% endif %}
+fips: {{ fips_compliant }}

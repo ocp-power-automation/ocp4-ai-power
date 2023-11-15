@@ -1,0 +1,52 @@
+  - name: Generate install-config.yaml
+    template:
+      src: ../templates/install-config.yaml.j2
+      dest: "{{ workdir }}/install-config.yaml"
+
+  - name: backup the install-config.yaml
+    copy:
+      src: "{{ workdir }}/install-config.yaml"
+      dest: "{{ workdir }}/install-config.yaml.back"
+      remote_src: yes
+      force: yes
+
+  - name: Generate agent-config.yaml
+    template:
+      src: ../templates/agent-config.yaml.j2
+      dest: "{{ workdir }}/agent-config.yaml"
+  - name: backup the agent-config.yaml
+    copy:
+      src: "{{ workdir }}/agent-config.yaml"
+      dest: "{{ workdir }}/agent-config.yaml.back"
+      remote_src: yes
+      force: yes      
+
+  - name: Generate manifest files
+    shell: |
+      OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE={{ release_image_override }} {{ openshift_installer }} agent create manifests --log-level {{ log_level }}
+    args:
+      chdir: "{{ workdir }}"
+
+  # - name: Create Machine Config for disk encryption
+  #   when: luks.enabled|bool and luks.config|length > 0
+  #   vars:
+  #     role_n: '{{ item }}'
+  #   template:
+  #     src: ../templates/99-node-machineconfig.yaml.j2
+  #     dest: "{{ workdir }}/openshift/99-{{ item }}-machineconfig.yaml"
+  #   with_items:
+  #     - master
+  #     - worker
+
+  - name: Create ISO image for agent based install
+    shell: |
+      OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE={{ release_image_override }} {{ openshift_installer }} agent create image --log-level {{ log_level }}
+    args:
+      chdir: "{{ workdir }}"
+
+  - name: Rename the ISO from agent.ppc64le.iso to agent.iso
+    command: mv agent.{{ rhcos_arch }}.iso agent.iso
+    args:
+      chdir: "{{ workdir }}"
+
+

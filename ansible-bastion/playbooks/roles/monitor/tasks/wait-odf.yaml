@@ -1,0 +1,21 @@
+- name: Wait for ODF installation completed
+  environment:
+    KUBECONFIG: "{{ kubeconfig_file }}"
+  shell: |
+    oc get csvs -n openshift-storage -o jsonpath='{.items[*].status.phase}'
+  register: odf_csv
+  until: >
+    odf_csv.stdout.split()|unique == ['Succeeded']
+  delay: 30
+  retries: 20
+
+- name: Wait for StorageCluster population completed
+  environment:
+    KUBECONFIG: "{{ kubeconfig_file }}"
+  shell: |
+    oc get storagecluster -n openshift-storage -o jsonpath='{.items[*].status.phase}'
+  register: sc_state
+  until: >
+    sc_state.stdout == 'Ready'
+  delay: 30
+  retries: 20

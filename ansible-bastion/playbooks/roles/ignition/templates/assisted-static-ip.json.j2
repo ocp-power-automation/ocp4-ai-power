@@ -1,0 +1,46 @@
+{
+  "static_network_config":  [
+    {% for i in masters %}
+      {% set item_1 = i.ipaddr %}
+      {% set item_2 = i.macaddr %}
+      {% if assisted_net_dualstack|bool %}
+      {% set item_3 = i.ip6addr %}
+      {% endif %}
+    {
+      "network_yaml": "dns-resolver:\n config:\n    server:\n    - {{ helper.ipaddr }}\ninterfaces:\n- ipv4:\n    address:\n    - ip: {{ item_1 }}\n      prefix-length: 24\n    dhcp: false\n    enabled: true\n  name: env32\n  type: ethernet\n  state: up\n{% if assisted_net_dualstack|bool %}  ipv6:\n    address:\n    - ip: {{ item_3 }}\n      prefix-length: 64\n    dhcp: false\n    enabled: true\n{% endif %}routes:\n  config:\n  - destination: 0.0.0.0/0\n    next-hop-address: {{ dhcp.router }}\n    next-hop-interface: env32\n    table-id: 254\n{% if assisted_net_dualstack|bool %}  - destination: ::/0\n    next-hop-address: {{ dhcp.router }}\n    next-hop-interface: env32\n    table-id: 254\n{% endif %}",
+      "mac_interface_map":  [
+        {
+          "mac_address":  "{{ item_2 }}",
+          "logical_nic_name":  "env32"
+        }
+      ]
+    }
+  {% if loop.last %}
+    {% if workers is defined and workers|length > 0 %},{% endif %}
+  {% else %},{% endif %}
+  {% endfor %}
+  {% if workers is defined and workers|length > 0 %}
+  {% for i in workers %}
+      {% set item_1 = i.ipaddr %}
+      {% set item_2 = i.macaddr %}
+      {% if assisted_net_dualstack|bool %}
+      {% set item_3 = i.ip6addr %}
+      {% endif %}
+    {
+      "network_yaml": "dns-resolver:\n config:\n    server:\n    - {{ helper.ipaddr }}\ninterfaces:\n- ipv4:\n    address:\n    - ip: {{ item_1 }}\n      prefix-length: 24\n    dhcp: false\n    enabled: true\n  name: env32\n  type: ethernet\n  state: up\n{% if assisted_net_dualstack|bool %}  ipv6:\n    address:\n    - ip: {{ item_3 }}\n      prefix-length: 64\n    dhcp: false\n    enabled: true\n{% endif %}routes:\n  config:\n  - destination: 0.0.0.0/0\n    next-hop-address: {{ dhcp.router }}\n    next-hop-interface: env32\n    table-id: 254\n{% if assisted_net_dualstack|bool %}  - destination: ::/0\n    next-hop-address: {{ dhcp.router }}\n    next-hop-interface: env32\n    table-id: 254\n{% endif %}",
+      "mac_interface_map":  [
+        {
+          "mac_address":  "{{ item_2 }}",
+          "logical_nic_name":  "env32"
+        }
+      ]
+    }
+  {% if loop.last %}
+    ]
+  {% else %},{% endif %}
+  {% endfor %}
+  {% endif %}
+  {% if workers is not defined or workers|length == 0 %}
+    ]
+  {% endif %}
+}

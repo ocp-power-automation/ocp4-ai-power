@@ -1,0 +1,23 @@
+---
+
+- name: Waiting for bootstrap completed
+  shell: "{{ openshift_installer }} wait-for bootstrap-complete --log-level {{ log_level }}"
+  args:
+    chdir: "{{ workdir }}"
+
+- name: Approve Worker CSRs
+  environment:
+    KUBECONFIG: "{{ workdir }}/auth/kubeconfig"
+  shell: |
+    oc get csr -ojson | jq -r '.items[] | select(.status == {} ) | .metadata.name' | xargs -r oc adm certificate approve
+  until: lookup('pipe','oc get nodes | grep -w worker | grep -w Ready | wc -l') == worker_count
+  retries: 30
+  delay: 60
+  when: worker_count|int > 0
+
+- name: Waiting for installation completed
+  shell: "{{ openshift_installer }} wait-for install-complete --log-level {{ log_level }}"
+  args:
+    chdir: "{{ workdir }}"
+
+

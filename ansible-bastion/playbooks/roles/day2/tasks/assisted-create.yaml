@@ -1,0 +1,127 @@
+- name: Get access Token
+  include_tasks: ../../ignition/tasks/assisted-refresh-token.yaml
+
+# - name: Get cluster info from output json file
+#   set_fact:
+#     day1_cluster_info: '{{ lookup("file", "{{ workdir }}/assisted-create-output.json") | from_json }}'
+
+- name: Get day1 OCP cluster ID 
+  environment:
+    KUBECONFIG: "{{ kubeconfig_file }}"
+  shell: oc get clusterversion -o jsonpath='{.items[].spec.clusterID}'
+  register: day1_ocp_cluster_id_result
+
+- name: Set day1 OCP cluster ID 
+  set_fact:
+    day1_ocp_cluster_id: "{{ day1_ocp_cluster_id_result.stdout }}"
+
+- name: Show day1 OCP cluster ID
+  debug:
+    msg: "{{ day1_ocp_cluster_id }}"
+
+- name: create day2-cluster-request.json.j2
+  template:
+    src: ../templates/cluster-request.json.j2
+    dest: "{{ workdir }}/assisted-day2-cluster-request.json"
+
+- name: Creates a Day2 cluster definition.
+  uri:
+    url: "{{ assisted_url }}/clusters/import"
+    method: POST
+    headers:
+      Content-Type: application/json
+      accept: application/json
+      Authorization: "{{ api_token }}"
+    src: "{{ workdir }}/assisted-day2-cluster-request.json"
+    body_format: json
+    return_content: yes
+    status_code: 201
+  register: day2clusterdetails
+
+- name: Print Day2 Cluster ID
+  debug:
+    msg: "Day2 Cluster ID is {{ day2clusterdetails.json.id }}"
+
+- name: Save day2 cluster output to file
+  copy: 
+    content:  "{{ day2clusterdetails.json }}"
+    dest: "{{ workdir }}/assisted-day2-cluster-request-output.json"
+
+- name: create day2-infraenv-request.json.j2
+  template:
+    src: ../templates/infraenv-request.json.j2
+    dest: "{{ workdir }}/assisted-day2-infraenv-request.json"
+
+- name: Creates Day2 Infra Env for Cluster.
+  uri:
+    url: "{{ assisted_url }}/infra-envs"
+    method: POST
+    headers:
+      Content-Type: application/json
+      accept: application/json
+      Authorization: "{{ api_token }}"
+    src: "{{ workdir }}/assisted-day2-infraenv-request.json"
+    body_format: json
+    return_content: yes
+    status_code: 201
+    validate_certs: "{{ assisted_token != '' }}"
+  register: day2infraenvdetails
+
+- name: Patch infraenv for discovery ignition
+  when: ("api.integration" in assisted_url) or ("api.stage" in assisted_url)
+  uri:
+    url: "{{ assisted_url }}/infra-envs/{{ day2infraenvdetails.json.id }}"
+    method: PATCH
+    body_format: json
+    src: "{{ workdir }}/discovery-ignition.json"
+    headers:
+        Authorization: "{{ api_token }}"
+    status_code: 201
+
+- name: Get Infraenv info after patch
+  uri:
+    url: "{{ assisted_url }}/infra-envs/{{ day2infraenvdetails.json.id }}"
+    method: GET
+    body_format: json
+    return_content: yes
+    headers:
+      Authorization: "{{ api_token }}"
+    status_code: 200
+  register: day2infraenvdetails
+
+- name: Print Day2 InfraEnv ID
+  debug:
+    msg: "Day2 InfraEnv ID is {{ day2infraenvdetails.json.id }}"
+
+- name: Save day2 infraenv output to file
+  copy: 
+    content:  "{{ day2infraenvdetails.json }}"
+    dest: "{{ workdir }}/assisted-day2-infraenv-request-output.json"
+
+- name: URL for Day2 Assisted Installer ISO Image
+  set_fact:
+    day2_infraenv_iso_url: "{{ day2infraenvdetails.json.download_url }}"
+
+- name: Downloads the Day 2 OpenShift per-cluster discovery ISO for API based deployment.
+  get_url:
+    url: "{{ day2_infraenv_iso_url }}"
+    headers:
+      Authorization: "{{ api_token }}"
+    dest: "{{ workdir }}/{{install_type}}-day2.iso"
+    force: yes
+    validate_certs: "{{ assisted_token != '' }}"
+
+- name: Get ignition from ISO
+  shell: |
+    coreos-installer iso ignition show {{ install_type }}-day2.iso > {{ install_type }}-day2.ign
+  args:
+    chdir: "{{ workdir }}"
+
+- name: Host ignition files
+  become: true
+  copy:
+    src: "{{ item }}"
+    dest: /var/www/html/ignition/
+    mode: o+r
+  with_fileglob:
+    - "{{ workdir }}/{{ install_type }}-day2.ign"

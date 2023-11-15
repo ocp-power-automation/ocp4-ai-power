@@ -1,0 +1,37 @@
+---
+- name: Check if Cluster is installed
+  block:
+    - name: Is Cluster Installed
+      uri:
+        url: "{{ assisted_url }}/clusters/{{ cluster_info.id }}"
+        method: GET
+        headers:
+          accept: application/json
+          Authorization: "{{ api_token }}"
+        return_content: yes
+        status_code: 200
+        validate_certs: "{{ assisted_token != '' }}"
+      register: ocpcluster
+      until: >
+        ocpcluster.json.status == 'installed' or
+        ocpcluster.json.status == 'error' or
+        ocpcluster.json.status == 'insufficient' or
+        ocpcluster.json.status == 'installing-pending-user-action'
+      delay: 60
+      retries: 100
+      failed_when: >
+        ocpcluster.json.status == 'error' or
+        ocpcluster.json.status == 'insufficient' or
+        ocpcluster.json.status == 'installing-pending-user-action'
+
+  rescue:
+    - name: Refresh access Token
+      include_tasks: ../../ignition/tasks/assisted-refresh-token.yaml
+      when: ocpcluster.status|default('None') != 200 and assisted_token != ""
+
+    - name: Fail if cluster wasn't installed successfully
+      fail:
+        msg: "Cluster failed to install. Cluster ended up with status: {{ ocpcluster.json.status }}"
+      when:
+        - ocpcluster.status|default('None') == 200
+        - ocpcluster.json.status|default('None') != 'installed'

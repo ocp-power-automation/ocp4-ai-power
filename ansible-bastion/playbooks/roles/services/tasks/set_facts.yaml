@@ -1,0 +1,93 @@
+---
+- block:
+    - assert: 
+        that: "{{ helper.networkifacename is defined }}"
+    - set_fact: 
+        networkifacename: "{{ helper.networkifacename }}"
+  rescue:
+    - set_fact:
+        networkifacename: "{{ ansible_default_ipv4.interface }}"
+
+- name: set up vars for registry
+  when: setup_registry is defined and setup_registry.deploy
+  block:
+  - set_fact:
+      registry:
+        - podman
+
+  - set_fact:
+      registry_services:
+        - named
+        - firewalld
+        - local-registry
+
+  - set_fact:
+      registry_host: "registry.{{ dns.clusterid }}.{{ dns.domain | lower  }}"
+      local_registry: "registry.{{ dns.clusterid }}.{{ dns.domain | lower  }}:5000"
+      release_image: "{{ setup_registry.remote_registry | default('quay.io') }}/{{ setup_registry.product_repo }}/{{ setup_registry.release_name }}:{{ setup_registry.release_tag }}"
+
+- set_fact:
+      packages:
+        - dnsmasq
+        - bind-utils
+        - firewalld
+        - haproxy
+        - httpd
+        - dhcp-server
+        - jq
+        - bash-completion
+        - python3-libselinux
+        - coreos-installer
+        - nfs-utils
+        - vim
+        - grub2-tools
+        - grub2-tools-extra
+        - podman
+  
+- set_fact:
+      services:
+        - dnsmasq
+        - httpd
+        - nfs-server
+        - haproxy
+
+- set_fact:
+    critical_services:
+      - httpd
+      - dnsmasq
+      - haproxy
+
+- set_fact:
+      ports:
+        - 67/udp
+        - 53/tcp
+        - 53/udp
+        - 123/tcp
+        - 123/udp
+        - 443/tcp
+        - 80/tcp
+        - 8080/tcp
+        - 8000/tcp
+        - 8888/tcp
+        - 8090/tcp
+        - 9000/tcp
+        - 6443/tcp
+        - 6443/udp
+        - 7500/tcp
+        - 22623/tcp
+        - 22623/udp
+        - 22624/tcp
+        - 22624/udp
+        - 69/udp
+        - 111/tcp
+        - 2049/tcp
+        - 3128/tcp
+        - 20048/tcp
+        - 50825/tcp
+        - 53248/tcp
+
+# See Fedora Wiki for changes:
+# https://fedoraproject.org/wiki/Changes/RenameNobodyUser
+- set_fact:
+    owner: nobody
+    group: nobody

@@ -1,0 +1,70 @@
+- name: Wait for at least one Day2 worker to be discovered in Assisted Installer
+  uri:
+    url: "{{ assisted_url }}/clusters/{{ day2clusterdetails.id }}"
+    method: GET
+    headers:
+      accept: application/json
+      Authorization: "{{ api_token }}"
+    return_content: yes
+    status_code: 200
+    validate_certs: "{{ assisted_token != '' }}"
+  register: day2ocpcluster
+  until: day2ocpcluster.json.host_networks|length > 0
+  delay: 20
+  retries: 50
+
+- name: Retrieve Day2 OpenShift hosts list
+  uri:
+    url: "{{ assisted_url }}/infra-envs/{{ day2infraenvdetails.id }}/hosts"
+    method: GET
+    headers:
+      accept: application/json
+      Authorization: "{{ api_token }}"
+    return_content: yes
+    status_code: 200
+    validate_certs: "{{ assisted_token != '' }}"
+  register: day2ocphosts
+
+- name: Wait till Day2 OpenShift hosts are in known status
+  uri:
+    url: "{{ assisted_url }}/infra-envs/{{ day2infraenvdetails.id }}/hosts/{{ item }}"
+    method: GET
+    headers:
+      accept: application/json
+      Authorization: "{{ api_token }}"
+    return_content: yes
+    status_code: 200
+    validate_certs: "{{ assisted_token != '' }}"
+  register: day2ocphostsid
+  until: "day2ocphostsid.json.status == 'known'"
+  loop: "{{ day2ocphosts.json|json_query('[*].id')|list }}"
+  delay: 20
+  retries: 50
+
+- name: Install Day2 OpenShift hosts
+  uri:
+    url: "{{ assisted_url }}/infra-envs/{{ day2infraenvdetails.id }}/hosts/{{ item }}/actions/install"
+    method: POST
+    headers:
+      accept: application/json
+      Authorization: "{{ api_token }}"
+    return_content: yes
+    status_code: 202
+    validate_certs: "{{ assisted_token != '' }}"
+  loop: "{{ day2ocphosts.json|json_query('[*].id')|list }}"
+
+- name: Wait till Day2 OpenShift bare metal hosts are added-to-existing-cluster
+  uri:
+    url: "{{ assisted_url }}/infra-envs/{{ day2infraenvdetails.id }}/hosts/{{ item }}"
+    method: GET
+    headers:
+      accept: application/json
+      Authorization: "{{ api_token }}"
+    return_content: yes
+    status_code: 200
+    validate_certs: "{{ assisted_token != '' }}"
+  register: day2ocphostsid
+  until: "day2ocphostsid.json.status == 'added-to-existing-cluster'"
+  loop: "{{ day2ocphosts.json|json_query('[*].id')|list }}"
+  delay: 30
+  retries: 50

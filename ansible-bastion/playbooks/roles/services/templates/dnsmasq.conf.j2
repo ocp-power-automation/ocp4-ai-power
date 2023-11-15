@@ -1,0 +1,86 @@
+#################################
+# DNS
+##################################
+#domain-needed
+# don't send bogus requests out on the internets
+bogus-priv
+# enable IPv6 Route Advertisements
+enable-ra
+bind-dynamic
+no-hosts
+#  have your simple hosts expanded to domain
+expand-hosts
+
+# Listen on this specific port instead of the standard DNS port
+# (53). Setting this to zero completely disables DNS function,
+# leaving only DHCP and/or TFTP.
+#port=5353
+
+interface={{ networkifacename }}
+# set your domain for expand-hosts
+domain={{ dns.clusterid }}.{{ dns.domain | lower }}
+local=/{{ dns.clusterid }}.{{ dns.domain | lower }}/
+{% if dhcp.ingress_vip is defined %}
+address=/apps.{{ dns.clusterid }}.{{ dns.domain | lower }}/{{ dhcp.ingress_vip }}
+{% elif masters | length == 1 and bootstrap is not defined %}
+address=/apps.{{ dns.clusterid }}.{{ dns.domain | lower }}/{{ masters[0].ipaddr }}
+{% elif dhcp.api_vip is defined %}
+address=/apps.{{ dns.clusterid }}.{{ dns.domain | lower }}/{{ dhcp.api_vip }}
+{% else %}
+address=/apps.{{ dns.clusterid }}.{{ dns.domain | lower }}/{{ helper.ipaddr }}
+{% endif %}
+server={{ dns.forwarder1 }}
+{% if dns.forwarder2 is defined %}
+server={{ dns.forwarder2 }}
+{% endif %}
+
+addn-hosts=/etc/dnsmasq.d/addnhosts
+
+
+##################################
+# DHCP
+##################################
+dhcp-ignore=tag:!known
+dhcp-leasefile=/var/lib/dnsmasq/dnsmasq.leases
+
+{% if enable_dhcp %}
+#dhcp-range={{ dhcp.subnet.split('/').0 }},static
+{% else %}
+dhcp-range={{ dhcp.subnet.split('/').0 }},static
+{% endif %}
+
+dhcp-option=option:router,{{ dhcp.router }}
+dhcp-option=option:netmask,{{ dhcp.netmask }}
+dhcp-option=option:dns-server,{{ helper.ipaddr }}
+dhcp-option=option:domain-name,{{ dns.clusterid }}.{{ dns.domain | lower }}
+#dhcp-option=option:domain-search,{{ dns.domain | lower }}
+{% if dhcp.mtu is defined %}
+dhcp-option=option:mtu, {{ dhcp.mtu }}
+{% endif %}
+
+{% if bootstrap is defined %}
+dhcp-host={{ bootstrap.macaddr }},{{ bootstrap.ipaddr }},{{ bootstrap.name | lower }},infinite
+{% endif %}
+
+{% for m in masters %}
+dhcp-host={{ m.macaddr }},{{ m.ipaddr }},{{ m.name | lower }},infinite
+{% endfor %}
+
+{% if workers is defined and workers | length > 0 %}
+{% for w in workers %}
+dhcp-host={{ w.macaddr }},{{ w.ipaddr }},{{ w.name | lower }},infinite
+{% endfor %}
+{% endif %}
+
+{% if day2_workers is defined and day2_workers | length > 0 %}
+{% for w in day2_workers %}
+dhcp-host={{ w.macaddr }},{{ w.ipaddr }},{{ w.name | lower }},infinite
+{% endfor %}
+{% endif %}
+
+###############################
+# PXE
+###############################
+enable-tftp
+tftp-root=/var/lib/tftpboot
+dhcp-boot=boot/grub2/powerpc-ieee1275/core.elf

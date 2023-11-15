@@ -1,0 +1,63 @@
+    - name: Copy registries.conf
+      template: 
+        src:  ../templates/registries.conf.j2
+        dest: "{{ workdir }}/registries.conf"
+    
+    - name: Generate discovery-ignition.json
+      template:
+        src: ../templates/discovery-ignition.json.j2
+        dest: "{{ workdir }}/discovery-ignition.json"
+
+    - name: Copy machineconfig-master.yaml
+      template: 
+        src:  ../templates/machineconfig-master.yaml.j2
+        dest: "{{ workdir }}/machineconfig-master.yaml"
+    
+    - name: Generate assisted-customization.json
+      template:
+        src: ../templates/assisted-customization.json.j2
+        dest: "{{ workdir }}/assisted-customization.json"
+
+    - name: Create the patch config
+      shell: |
+        base64 -w0 registries.conf > registries.conf.b64
+        sed -i "s/BASE64_ENCODED_REGISTRY_CONF/$(cat registries.conf.b64)/" discovery-ignition.json
+        base64 -w0 machineconfig-master.yaml > machineconfig-master.yaml.b64
+        sed -i "s/BASE64_ENCODED_MACHINECONFIG_YAML/$(cat machineconfig-master.yaml.b64)/" assisted-customization.json
+      args:
+        chdir: "{{ workdir }}"
+
+    - name: Patch infraenv for discovery ignition
+      uri:
+        url: "{{ assisted_url }}/infra-envs/{{ assisted_infraenv_id }}"
+        method: PATCH
+        body_format: json
+        src: "{{ workdir }}/discovery-ignition.json"
+        headers:
+            Authorization: "{{ api_token }}"
+        status_code: 201
+
+    # - name: Patch cluster for master customization
+    #   uri:
+    #     url: "{{ assisted_url }}/clusters/{{ assisted_cluster_id }}/manifests"
+    #     method: POST
+    #     body_format: json
+    #     src: "{{ workdir }}/assisted-customization.json"
+    #     headers:
+    #         Authorization: "{{ api_token }}"
+    #     status_code: 201
+
+    # - name: Generate install-config mirror patch.json
+    #   template:
+    #     src: ../templates/assisted-mirror.json.j2
+    #     dest: "{{ workdir }}/assisted-mirror.json"
+
+    # - name: Patch install-config with mirror registries
+    #   uri:
+    #     url: "{{ assisted_url }}/clusters/{{ assisted_cluster_id }}/install-config"
+    #     method: PATCH
+    #     body_format: json
+    #     src: "{{ workdir }}/assisted-mirror.json"
+    #     headers:
+    #         Authorization: "{{ api_token }}"
+    #     status_code: 201

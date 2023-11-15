@@ -1,0 +1,34 @@
+---
+- name: Log into RH SSO API to get API_TOKEN
+  when: assisted_token != ""
+  block:
+  - name: Get API_TOKEN
+    uri:
+      url: https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token
+      body_format: form-urlencoded
+      method: POST
+      body:
+        grant_type: refresh_token
+        client_id: cloud-services
+        refresh_token: "{{ assisted_token }}"
+    register: token
+
+  - name: Set API_TOKEN
+    set_fact:
+      access_token: "Bearer {{ token.json | json_query(jmesquery) }}"
+    vars:
+      jmesquery: "access_token"
+
+- name: Set API_TOKEN in main 
+  block:
+    - assert:
+        that: "{{ assisted_token != '' }}"
+    - set_fact:
+        api_token: "{{ access_token }}"
+  rescue:
+    - set_fact:
+        api_token: ""
+
+# - name: Show API_TOKEN
+#   debug:
+#     msg: "{{ api_token }}"

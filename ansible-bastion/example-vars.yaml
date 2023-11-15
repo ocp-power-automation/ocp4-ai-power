@@ -1,0 +1,110 @@
+---
+# disk: /dev/sda
+helper:
+  name: "helper"
+  ipaddr: "192.168.79.2"
+  #networkifacename: "env34"
+dns:
+  domain: "ai.io"
+  clusterid: "ocp"
+  forwarder1: "9.9.9.9"
+  forwarder2: "8.8.4.4"
+dhcp:
+  router: "192.168.79.2"
+  netmask: "255.255.255.0"
+  subnet: "192.168.79.0/24"
+
+masters:
+  - name: "master-1"
+    ipaddr: "192.168.79.98"
+    macaddr: "02:4f:9e:42:b4:02"
+    pvmcec: Server-9080-HEX-SN786E288
+    pvmlpar: cp1-master-1
+    disk: /dev/sda
+  - name: "master-2"
+    ipaddr: "192.168.79.99"
+    macaddr: "02:4f:97:3d:02:02"
+    pvmcec: Server-9080-HEX-SN786E288
+    pvmlpar: cp1-master-2
+    disk: /dev/sda
+  - name: "master-3"
+    ipaddr: 192.168.79.100"
+    macaddr: "02:4f:9c:68:0d:02"
+    pvmcec: Server-9080-HEX-SN786E288
+    pvmlpar: cp1-master-3
+    disk: /dev/sda
+# workers:
+#   - name: "worker-1"
+#     ipaddr: "9.47.87.82"
+#     macaddr: "fa:b0:45:27:43:20"
+#     pvmcec: "C340F21U13"
+#     pvmlpar: "cs-ocp-sno-89bf5d67-000072d1"
+#     disk: /dev/sda
+#   - name: "worker-2"
+#     ipaddr: "9.47.87.82"
+#     macaddr: "fa:b0:45:27:43:20"
+#     pvmcec: "C340F21U13"
+#     pvmlpar: "cs-ocp-sno-89bf5d67-000072d1"
+
+
+########################
+#force_ocp_download: false
+
+######################
+# URL path to RHCOS download site
+rhcos_arch: "ppc64le"
+rhcos_base_url: "https://mirror.openshift.com/pub/openshift-v4/{{ rhcos_arch }}/dependencies/rhcos"
+######################
+# RHCOS server for OCP
+# for Night build
+# rhcos_rhcos_base: "pre-release"
+# rhcos_rhcos_tag: "45.82.202006191459-0"
+# for release build
+rhcos_rhcos_base: "4.13"
+rhcos_rhcos_tag: "latest"
+rhcos_iso: "{{ rhcos_base_url}}/{{ rhcos_rhcos_base }}/{{ rhcos_rhcos_tag }}/rhcos-live.{{ rhcos_arch }}.iso"
+rhcos_rootfs: "{{ rhcos_base_url}}/{{ rhcos_rhcos_base }}/{{ rhcos_rhcos_tag }}/rhcos-live-rootfs.{{ rhcos_arch }}.img"
+rhcos_initramfs: "{{ rhcos_base_url}}/{{ rhcos_rhcos_base }}/{{ rhcos_rhcos_tag }}/rhcos-live-initramfs.{{ rhcos_arch }}.img"
+rhcos_kernel: "{{ rhcos_base_url}}/{{ rhcos_rhcos_base }}/{{ rhcos_rhcos_tag }}/rhcos-live-kernel-{{ rhcos_arch }}"
+########################
+# URL path to OCP clients download site
+ocp_client_arch: "ppc64le"
+ocp_base_url: "https://mirror.openshift.com/pub/openshift-v4/{{ ocp_client_arch }}/clients"
+# Client/install for OCP
+# for night build
+#ocp_client_base: "ocp-dev-preview"
+#ocp_client_tag: "4.7.0-0.nightly-ppc64le-2020-11-05-164124"
+# for release build
+ocp_client_base: "ocp"
+ocp_client_tag: "latest-4.13"
+ocp_client: "{{ ocp_base_url}}/{{ ocp_client_base }}/{{ ocp_client_tag }}/openshift-client-linux.tar.gz"
+ocp_installer: "{{ ocp_base_url}}/{{ ocp_client_base }}/{{ ocp_client_tag }}/openshift-install-linux.tar.gz"
+
+##########################################################
+# Variables defined for used by ocp4-upi-powervm-playbooks
+# pvmcec : The physical machine where the LPAR(node) is running on
+# pvmlpar: The LPAR(node) name in HMC
+### Note: pvmcec and pvmlpar are required for all cluster nodes defined in this vars.yaml file
+# pvm_hmc : The HMC host IP and user, it is used to run HMC CLI remotely, the helper need to be able to ssh to HMC without a password
+##########################################################
+pvm_hmc: <hmc_user>@<hmc_host>
+
+###################################
+# define the deployment type:
+# install_type: agent | assisted | sno | normal
+#   agent: agent based installer
+#   assisted: assisted installer
+#   sno: normal OCP SNO installation
+#   #normal: normal OCP UPI installation, require bootstrap
+install_type: agent
+
+
+####################################
+# the default place for pull-secret and id_rsa.pub
+# pull_secret: '{{ lookup("file", "~/.openshift/pull-secret") | from_json | to_json }}'
+# public_ssh_key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+
+# need to use absolute path for workdir
+workdir: "/home/cloud-user/ocp4-{{ install_type }}"
+log_level: info
+

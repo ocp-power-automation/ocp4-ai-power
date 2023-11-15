@@ -1,0 +1,27 @@
+---
+# file: main.yml
+- name: Update the inventory
+  hosts: bastion
+  gather_facts: false
+  any_errors_fatal: true
+  roles:
+  - update-inventory
+
+- name: Set boot order for SNO
+  hosts: masters
+  vars_files:
+  - defaults/main.yaml
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Setup required services
+      include: roles/monitor/tasks/sno-set-boot-order.yaml
+
+- name: Monitor OCP installation progress
+  hosts: bastion
+  vars_files:
+    - defaults/main.yaml
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+  - monitor

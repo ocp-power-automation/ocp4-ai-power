@@ -1,0 +1,20 @@
+---
+# defaults file
+
+################################
+# # disk encryption
+luks:
+   enabled: false
+   filesystem_device: /dev/mapper/root
+   format: xfs
+   wipeFileSystem: true
+   device: /dev/disk/by-partlabel/root
+   label: luks-root
+   options:
+      - --cipher
+      - aes-cbc-essiv:sha256
+   wipeVolume: true
+   name: root
+   
+
+

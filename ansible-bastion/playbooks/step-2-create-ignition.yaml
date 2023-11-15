@@ -1,0 +1,24 @@
+---
+# file: main.yml
+- name: Cleanup old files
+  hosts: bastion
+  gather_facts: false
+  any_errors_fatal: false
+  tasks:
+    - name: Clean up work directory
+      file: 
+        path: "{{ workdir }}/"
+        state: absent
+
+- name: Create OCP ignition file
+  hosts: bastion
+  vars_files:
+  - defaults/main.yaml
+  become: false
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+  - ignition
+    
+
+

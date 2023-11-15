@@ -1,0 +1,136 @@
+- name: Get cluster status
+  uri:
+      url: "{{ assisted_url }}/clusters/{{ cluster_info.id }}"
+      method: GET
+      headers:
+          Authorization: "{{ api_token }}"
+      body_format: json
+      return_content: yes
+      status_code: 200
+  register: status_2
+  until: status_2.json.status == "ready" or status_2.json.status == "installing" or status_2.json.status == "installed"
+  retries: 60
+  delay: 30
+
+- name: Start installation
+  when: ocpcluster.json.status == "ready" or status_2.json.status == "ready"
+  uri:
+    url: "{{ assisted_url }}/clusters/{{ cluster_info.id }}/actions/install"
+    method: POST
+    headers:
+          Authorization: "{{ api_token }}"
+    return_content: yes
+    status_code: 202
+  register: install_status
+  until: install_status.status == 202
+  delay: 30
+  retries: 15
+
+- name: Waiting for installation start
+  uri:
+    url: "{{ assisted_url }}/clusters/{{ cluster_info.id }}"
+    method: GET
+    headers:
+          Authorization: "{{ api_token }}"
+    body_format: json
+    return_content: yes
+    status_code: 200
+  register: cluster_status
+  until: cluster_status.json.status == "installing"
+  retries: 30
+  delay: 15
+
+- name: Create openshift directories directories
+  file:
+    path: "{{ workdir }}/{{ item }}"
+    state: directory
+  with_items:
+    - auth
+    - openshift
+    - manifests
+
+- name: Download kubeconfig
+  get_url:
+    url: "{{ assisted_url }}/clusters/{{ cluster_info.id }}/downloads/credentials?file_name=kubeconfig"
+    dest: "{{ workdir }}/auth/kubeconfig"
+    headers:
+      Authorization: "{{ api_token }}"
+
+- name: Install kubeconfig
+  copy:
+    src: "{{ workdir }}/auth/kubeconfig"
+    dest: "~/.kube/config"
+
+- name: Download kubeadmin password
+  get_url:
+    url: "{{ assisted_url }}/clusters/{{ cluster_info.id }}/downloads/credentials?file_name=kubeadmin-password"
+    dest: "{{ workdir }}/auth/kubeadmin-password"
+    headers:
+      Authorization: "{{ api_token }}"
+
+- name: Download OpenShift bare metal cluster install-config.yaml.
+  get_url:
+    url: "{{ assisted_url }}/clusters/{{ cluster_info.id }}/downloads/files?file_name=install-config.yaml"
+    dest: "{{ workdir }}/install-config.yaml"
+    headers:
+      Authorization: "{{ api_token }}"
+
+- name: Get cluster manifests
+  uri:
+    url: "{{ assisted_url }}/clusters/{{ cluster_info.id }}/manifests"
+    method: GET
+    body_format: json
+    return_content: yes
+    headers:
+      Authorization: "{{ api_token }}"
+    status_code: 200
+  register: manifests
+
+# - name: Show cluster manifests
+#   debug:
+#     msg: "{{ manifests.json }}" 
+
+- name: save all manifest list to file
+  copy:
+    content: "{{ manifests.json }}"
+    dest: "{{ workdir }}/cluster-manifest-list.txt"
+
+- name: Download all manifest files
+  get_url:
+    url: "{{ assisted_url }}/clusters/{{ cluster_info.id }}/manifests/files?folder={{ item.folder }}&file_name={{ item.file_name }}"
+    dest: "{{ workdir }}/{{ item.folder }}/{{ item.file_name }}"
+    headers:
+      Authorization: "{{ api_token }}"
+  loop: "{{ manifests.json }}"
+  
+- name: Get patched Infraenv info
+  uri:
+    url: "{{ assisted_url }}/infra-envs/{{ infraenv_info.id }}"
+    method: GET
+    body_format: json
+    return_content: yes
+    headers:
+      Authorization: "{{ api_token }}"
+    status_code: 200
+  register: infraenv_result2
+
+- name: Save patched infraenv output to file
+  copy: 
+    content:  "{{ infraenv_result2.json }}"
+    dest: "{{ workdir }}/assisted-patched-infraenv-output.json"
+
+- name: Get cluster info after patch
+  uri:
+    url: "{{ assisted_url }}/clusters/{{ cluster_info.id }}"
+    method: GET
+    body_format: json
+    return_content: yes
+    headers:
+      Authorization: "{{ api_token }}"
+    status_code: 200
+  register: cluster_result2
+
+- name: Save patched cluster output to file
+  copy: 
+    content:  "{{ cluster_result2.json }}"
+    dest: "{{ workdir }}/assisted-patched-cluster-output.json"

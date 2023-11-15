@@ -1,0 +1,47 @@
+---
+# tasks file for download the other required playbooks
+- name: Add bastion to inventory
+  add_host:
+    hostname: '{{ helper.ipaddr }}'
+    ansible_connection: local
+    groups: bastion
+
+- name: check if bootstrap has defined
+  when: (bootstrap is defined)
+  block:
+  - name: Add bootstrap to inventory
+    add_host:
+      hostname: '{{ bootstrap.ipaddr }}'
+      ansible_connection: ssh 
+      ansible_user: core
+      groups: bootstrap
+
+- name: Add masters to inventory
+  add_host:
+    hostname: '{{ item.ipaddr }}'
+    ansible_connection: ssh 
+    ansible_user: core
+    groups: masters
+  with_items: "{{ masters }}"
+
+- name: Check if there are workers
+  when: (workers is defined) and (workers|length > 0)
+  block:
+  - name: Add workers to inventory
+    add_host:
+      hostname: '{{ item.name }}'
+      ansible_connection: ssh 
+      ansible_user: core
+      groups: workers
+    with_items: "{{ workers }}"
+
+- name: Check if there are day2_workers
+  when: (day2_workers is defined) and (day2_workers|length > 0)
+  block:
+  - name: Add day2_workers to inventory
+    add_host:
+      hostname: '{{ item.name }}'
+      ansible_connection: ssh 
+      ansible_user: core
+      groups: day2_workers
+    with_items: "{{ day2_workers }}"

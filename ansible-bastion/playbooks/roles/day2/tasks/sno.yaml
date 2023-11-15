@@ -1,0 +1,34 @@
+---  
+- name: Boot Workers with Day2 ISO image
+  include_tasks: netboot.yaml
+
+- name: Wait for node CSR request
+  environment:
+    KUBECONFIG: "{{ kubeconfig_file }}"
+  shell: |
+     oc get csr | awk  '/worker-.*Pending/ { print $1 }'
+  register: nodeCsrName
+  until:  nodeCsrName.stdout|length != 0
+  delay: 30
+  retries: 60
+
+- name: Approve node CSR
+  environment:
+    KUBECONFIG: "{{ kubeconfig_file }}"
+  shell: |
+    oc adm certificate approve "{{ item }}"
+  loop: "{{ nodeCsrName.stdout_lines | flatten}}"
+
+- name: Ensure all hosts added to OS cluster
+  environment:
+    KUBECONFIG: "{{ kubeconfig_file }}"
+  shell: |
+    oc get node "{{ item.name }}" --no-headers
+  register: cluster_nodes
+  with_items: "{{ day2_workers }}"
+  until:
+  - '" Ready " in cluster_nodes.stdout'
+  retries: 30
+  delay: 30
+
+

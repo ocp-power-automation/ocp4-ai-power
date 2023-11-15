@@ -1,0 +1,25 @@
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  labels:
+    machineconfiguration.openshift.io/role: master
+  name: 99-master-custom
+spec:
+  config:
+    ignition:
+      version: 3.2.0
+    storage:
+      files:
+        - contents: |
+            unqualified-search-registries = ["registry.access.redhat.com", "docker.io", "quay.io"]
+            [[registry]]
+                prefix = ""
+                location = "registry-proxy.engineering.redhat.com/rh-osbs"
+                mirror-by-digest-only = false
+                [[registry.mirror]]
+                location = "brew.registry.redhat.io/rh-osbs"
+          mode: 420
+          overwrite: true
+          path: /etc/containers/registries.conf
+  kernelArguments:
+    - loglevel=7

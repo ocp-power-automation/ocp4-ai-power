@@ -1,0 +1,109 @@
+- name: Call to all hosts info
+  uri:
+    url: "{{ assisted_url }}/infra-envs/{{ infraenv_info.id }}/hosts"
+    method: GET
+    body_format: json
+    return_content: yes
+    headers:
+      Authorization: "{{ api_token }}"
+    status_code: 200
+  register: hosts_result
+  until: (hosts_result.json | length) == (master_count | int + worker_count | int)
+  retries: 30
+  delay: 30
+
+- name: show host count
+  debug:
+    msg: "{{ hosts_result.json | length }}"
+
+- name: wait hosts have been added to Assistance Installer
+  uri:
+    url: "{{ assisted_url }}/clusters/{{ cluster_info.id }}"
+    method: GET
+    body_format: json
+    return_content: yes
+    headers:
+      Authorization: "{{ api_token }}"
+    status_code: 200
+  register: ocpcluster
+  until: ocpcluster.json.host_networks is defined
+  delay: 20
+  retries: 50
+
+- name: Get cluster status
+  uri:
+    url: "{{ assisted_url }}/clusters/{{ cluster_info.id }}"
+    method: GET
+    body_format: json
+    return_content: yes
+    headers:
+      Authorization: "{{ api_token }}"
+    status_code: 200
+  register: ocpcluster
+  until: ocpcluster.json.host_networks|length > 0 and ocpcluster.json.status != "insufficient" 
+  delay: 20
+  retries: 50
+
+- name: Print out ocpcluster.json.status
+  debug:
+    msg: "{{ ocpcluster.json.status }}"
+
+- name: Patch cluster
+  when: (ocpcluster.json.status == "pending-for-input" or ocpcluster.json.status == "ready") and masters | length > 1
+  block:
+  - name: Generate cluster-update.json
+    template:
+      src: ../templates/cluster-update.json.j2
+      dest: "{{ workdir }}/cluster-update.json"
+
+  - name: Update the cluster info to assisted service
+    uri:
+      url: "{{ assisted_url }}/clusters/{{ cluster_info.id }}"
+      method: PATCH
+      body_format: json
+      src: "{{ workdir }}/cluster-update.json"
+      headers:
+          Authorization: "{{ api_token }}"
+      status_code: 201
+
+  - name: Update host roles
+    block:
+    - name: Get hosts info from infraenv
+      uri:
+        url: "{{ assisted_url }}/infra-envs/{{ infraenv_info.id }}/hosts"
+        method: GET
+        body_format: json
+        return_content: yes
+        headers:
+          Authorization: "{{ api_token }}"
+        status_code: 200
+      register: hosts
+    
+    - name: set role for masters
+      uri:
+        url: "{{ assisted_url }}/infra-envs/{{ infraenv_info.id }}/hosts/{{ hosts.json | json_query(query) | first }}"
+        method: PATCH
+        body_format: json
+        body: '{ "host_role": "master" }'
+        headers:
+          Authorization: "{{ api_token }}"
+        status_code: 201
+      vars:
+        query: "[?requested_hostname=='{{ item.name }}' || requested_hostname=='{{ item.name }}.{{ dns.clusterid }}.{{ dns.domain }}'].id"
+      with_items: "{{ masters }}"
+
+    - name: set role for workers
+      uri:
+        url: "{{ assisted_url }}/infra-envs/{{ infraenv_info.id }}/hosts/{{ hosts.json | json_query(query) | first }}"
+        method: PATCH
+        headers:
+          Authorization: "{{ api_token }}"
+        body_format: json
+        body: '{ "host_role": "worker" }'
+        status_code: 201
+      vars:
+        query: "[?requested_hostname=='{{ item.name }}' || requested_hostname=='{{ item.name }}.{{ dns.clusterid }}.{{ dns.domain }}'].id"
+      with_items: "{{ workers }}"
+      when: 
+        - workers is defined 
+        - workers | length > 0

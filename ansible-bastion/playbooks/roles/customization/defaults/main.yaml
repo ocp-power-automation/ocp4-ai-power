@@ -1,0 +1,9 @@
+---
+# defaults file
+kubeconfig_file: "{{ workdir}}/auth/kubeconfig"
+workdir: ~/workdir-ocp4-ai
+rhcos_kernel_options: []
+sysctl_tuned_options: false
+powervm_rmc: true
+rsct_image: "quay.io/powercloud/rsct-ppc64le:latest"
+node_labels: {}

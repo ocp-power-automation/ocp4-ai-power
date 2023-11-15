@@ -1,0 +1,43 @@
+---
+
+- name: Install Squid package
+  package:
+    name: squid
+    state: present
+
+- name: Configure Squid
+  template:
+    src: ../templates/squid.conf.j2
+    dest: /etc/squid/squid.conf
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+  become: true
+  notify:
+    - restart squid
+
+- name: Add Squid to firewall
+  firewalld:
+    service: squid
+    permanent: true
+    state: enabled
+    zone: public
+  notify:
+    - restart firewalld
+
+- name: Create squid dropin directory
+  file:
+    path: /etc/systemd/system/squid.service.d
+    state: directory
+    mode: 0755
+  become: true
+
+- name: Copy restart conf file to the squid dropin directory
+  copy:
+    src: ../files/restart.conf
+    dest: /etc/systemd/system/squid.service.d/restart.conf
+  notify:
+    - restart squid
+  become: true
+  
+

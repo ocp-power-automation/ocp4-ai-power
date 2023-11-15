@@ -1,0 +1,73 @@
+---
+# file: main.yml
+- name: Cleanup old files
+  hosts: bastion
+  gather_facts: false
+  any_errors_fatal: false
+  tasks:
+    - name: Clean up work directory
+      file: 
+        path: "{{ workdir }}/"
+        state: absent
+
+- name: Setup services for bastion
+  hosts: bastion
+  vars_files:
+  - defaults/main.yaml
+  handlers:
+  - import_tasks: handlers/main.yml
+  gather_facts: true
+  any_errors_fatal: true
+  become: true
+  roles:
+  - services
+
+- name: Create OCP ignition file
+  hosts: bastion
+  vars_files:
+  - defaults/main.yaml
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+  roles:
+  - ignition
+    
+- name: Net boot cluster nodes
+  hosts: bastion
+  gather_facts: false
+  any_errors_fatal: true
+  roles:
+  - netboot
+
+- name: Update the inventory
+  hosts: bastion
+  gather_facts: false
+  any_errors_fatal: true
+  roles:
+  - update-inventory
+
+- name: Set boot order for SNO
+  hosts: masters
+  vars_files:
+  - defaults/main.yaml
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Setup required services
+      include: roles/monitor/tasks/sno-set-boot-order.yaml
+
+- name: Monitor OCP installation progress
+  hosts: bastion
+  vars_files:
+    - defaults/main.yaml
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+  - monitor
+
+# - name: Customize OCP installation
+#   hosts: bastion
+#   gather_facts: false
+#   any_errors_fatal: true
+#   roles:
+#   - customization

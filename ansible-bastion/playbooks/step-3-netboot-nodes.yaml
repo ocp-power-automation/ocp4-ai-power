@@ -1,0 +1,8 @@
+---
+# file: main.yml
+- name: Net boot cluster nodes
+  hosts: bastion
+  gather_facts: false
+  any_errors_fatal: true
+  roles:
+  - netboot

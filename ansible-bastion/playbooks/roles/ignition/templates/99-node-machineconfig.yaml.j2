@@ -1,0 +1,37 @@
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  name: '99-{{ role_n }}-storage-encryption'
+  labels:
+    machineconfiguration.openshift.io/role: '{{ role_n }}'
+spec:
+  config:
+    ignition:
+      version: 3.2.0
+    storage:
+      filesystems:
+        - device: {{ luks.filesystem_device }}
+          format: {{ luks.format }}
+          label: {{ luks.name }}
+          wipeFilesystem: {{ luks.wipeFileSystem }}
+      luks:
+        - name: {{ luks.name }}
+          device: {{ luks.device }}
+          label: {{ luks.label }}
+          options:
+{% for item in luks.options %}
+            - {{ item }}
+{% endfor %}
+          wipeVolume: true
+          clevis:
+            tang:
+{% for item in luks.config  %}
+{% if item.thumbprint is not none and item.url is not none %}
+              - thumbprint: {{ item.thumbprint}}
+                url: {{ item.url }}
+{% endif %}
+{% endfor %}
+            threshold: 1
+  kernelArguments:
+    - rd.neednet=1
+

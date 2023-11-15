@@ -1,0 +1,15 @@
+---
+- name: Setup services for bastion
+  hosts: bastion
+  vars_files:
+    - defaults/main.yaml
+  handlers:
+  - import_tasks: handlers/main.yml
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  vars:
+    force_ocp_download: false
+  roles:
+  - services
+  

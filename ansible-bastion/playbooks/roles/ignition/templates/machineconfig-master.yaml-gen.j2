@@ -1,0 +1,21 @@
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  labels:
+    machineconfiguration.openshift.io/role: master
+  name: 99-master-custom
+spec:
+  config:
+    ignition:
+      version: 3.2.0
+    storage:
+      files:
+        - contents:
+            compression: gzip
+            source: data:;base64,H4sIAAAAAAAC/0yOTW7EIAyF93MKi3WhJ8hJoiwIOMQqg2dsog63r/LXZOdnfU/fW8p78Zkmwmg
+VvYTZCibSKoQKHfTmiM35EFDVCcbZVxf4ab7ARA4/KI54De/Ft/UcHn1/1obhAQDwEpzoAx0Ys+XMwVfisn5O1L6EP81hSVQQhUq6yb5ltqyj7vUnibDYsdlICbVaLrlBB5PPihtxLXA7fAy5i0fBX/ePHS7iS/UXAAD//7i4CK8eAQAA
+          mode: 420
+          overwrite: true
+          path: /etc/containers/registries.conf
+  kernelArguments:
+    - loglevel=7

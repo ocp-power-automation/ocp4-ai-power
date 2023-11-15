@@ -1,0 +1,11 @@
+# file: main.yml
+- name: Monitor OCP installation progress
+  hosts: bastion
+  vars_files:
+    - defaults/main.yaml
+  gather_facts: false
+  any_errors_fatal: true
+  vars:
+    kubeconfig_file: "{{ workdir}}/kubeconfig"
+  roles:
+  - customization

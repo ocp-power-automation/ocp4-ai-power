@@ -1,0 +1,39 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: nfs-client-provisioner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nfs-client-provisioner
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: nfs-client-provisioner
+    spec:
+      serviceAccountName: nfs-client-provisioner
+      containers:
+        - name: nfs-client-provisioner
+{% if setup_registry.deploy and  setup_registry.autosync_registry %}
+          image: registry.{{ dns.clusterid }}.{{ dns.domain }}:5000/nfs-client-provisioner:latest
+{% else %}
+          image: registry.k8s.io/sig-storage/nfs-subdir-external-provisioner:v4.0.2
+{% endif %}
+          volumeMounts:
+            - name: nfs-client-root
+              mountPath: /persistentvolumes
+          env:
+            - name: PROVISIONER_NAME
+              value: nfs-storage
+            - name: NFS_SERVER
+              value: {{ nfs.server | default(helper.ipaddr) }}
+            - name: NFS_PATH
+              value: {{ nfs.path | default('/export') }}
+      volumes:
+        - name: nfs-client-root
+          nfs:
+            server: {{ nfs.server | default(helper.ipaddr) }}
+            path: {{ nfs.path | default('/export') }}

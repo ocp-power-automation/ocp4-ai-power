@@ -1,0 +1,73 @@
+apiVersion: v1alpha1
+metadata:
+  name: {{ dns.clusterid }}
+rendezvousIP: {{ masters[0].ipaddr }}
+hosts:
+{% for m in masters %}
+  - hostname: {{ m.name }}
+    role: master
+    interfaces:
+       - name: eth0
+         macAddress: {{ m.macaddr }}
+    networkConfig:
+      interfaces:
+        - name: eth0
+          type: ethernet
+          state: up
+          mac-address: {{ m.macaddr }}
+          ipv4:
+            enabled: true
+            address:
+              - ip: {{ m.ipaddr }}
+                prefix-length: {{ dhcp.subnet.split('/').1 }}
+{% if static_ip|bool %}
+            dhcp: false
+      dns-resolver:
+        config:
+          server:
+            - {{ helper.idaddr }}
+      routes:
+        config:
+          - destination: 0.0.0.0/0
+            next-hop-address: {{ dhcp.route }}
+            next-hop-interface: eth0
+            table-id: 254
+{% else %}
+            dhcp: true
+{% endif %}
+{% endfor %}
+{% if workers is defined and workers | length > 0 %}
+{% for w in workers %}
+  - hostname: {{ w.name }}
+    role: worker
+    interfaces:
+       - name: eth0
+         macAddress: {{ w.macaddr }}
+    networkConfig:
+      interfaces:
+        - name: eth0
+          type: ethernet
+          state: up
+          mac-address: {{ w.macaddr }}
+          ipv4:
+            enabled: true
+            address:
+              - ip: {{ w.ipaddr }}
+                prefix-length: {{ dhcp.subnet.split('/').1 }}
+{% if static_ip|bool %}
+            dhcp: false
+      dns-resolver:
+        config:
+          server:
+            - {{ helper.idaddr }}
+      routes:
+        config:
+          - destination: 0.0.0.0/0
+            next-hop-address: {{ dhcp.route }}
+            next-hop-interface: eth0
+            table-id: 254
+{% else %}
+            dhcp: true
+{% endif %}
+{% endfor %}
+{% endif %}
