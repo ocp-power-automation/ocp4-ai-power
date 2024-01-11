@@ -13,7 +13,7 @@
   delay: 30
 
 - name: Start installation
-  when: ocpcluster.json.status == "ready" or status_2.json.status == "ready"
+  when: status_2.json.status == "ready"
   uri:
     url: "{{ assisted_url }}/clusters/{{ cluster_info.id }}/actions/install"
     method: POST
@@ -22,9 +22,9 @@
     return_content: yes
     status_code: 202
   register: install_status
-  until: install_status.status == 202
-  delay: 30
-  retries: 15
+  # until: install_status.status == 202
+  # delay: 30
+  # retries: 15
 
 - name: Waiting for installation start
   uri:

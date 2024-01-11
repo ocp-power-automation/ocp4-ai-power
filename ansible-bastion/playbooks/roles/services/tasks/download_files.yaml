@@ -11,7 +11,7 @@
         - "/var/www/html/install/rootfs.img"
         - "/var/lib/tftpboot/rhcos/initramfs.img"
         - "/var/lib/tftpboot/rhcos/kernel"
-    when: force_ocp_download
+    when: force_ocp_download or ( install_type != "normal" and install_type != "sno" )
 
   - name: Downloading OCP4 rhcos-live.iso
     when: rhcos_iso is defined and force_ocp_download
