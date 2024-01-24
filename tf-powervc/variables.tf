@@ -62,7 +62,7 @@ variable "install_type" {
   description = "Specify the OCP installation type: assisted install, agent-based install or SNO"
   default     = "agent"
   validation {
-    condition     = contains(["agent", "assisted", "sno"], var.install_type)
+    condition     = contains(["agent", "assisted", "sno", "normal"], var.install_type)
     error_message = "The supported installation type is one of: agent, assisted or sno"
   }
 }

@@ -1,7 +1,7 @@
 ---
 # file: main.yaml tasks file for ocp4 config
 - name: set facts
-  include: set_facts.yaml
+  include_tasks: set_facts.yaml
 
 - name: check install workdir exist 
   stat:
@@ -24,15 +24,15 @@
 
 - name: Setup for agent based installer
   when: install_type == "agent"
-  include: agent.yaml
+  include_tasks: agent.yaml
 
 - name: Setup for assisted installer
   when: install_type == "assisted"
-  include: assisted.yaml
+  include_tasks: assisted.yaml
 
 - name: Setup for SNO install
   when: (install_type == "sno") or (install_type == "normal")
-  include: sno.yaml
+  include_tasks: sno.yaml
 
 - name: Get pxe files and ignition from ISO
   when: install_type == "agent" or install_type == "assisted"

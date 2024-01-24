@@ -15,16 +15,16 @@
   when: install_type == "assisted"
   environment:
     KUBECONFIG: "{{ kubeconfig_file }}"
-  include: assisted.yaml
+  include_tasks: assisted.yaml
 
 - name: Day2 for agent based installer
   when: install_type == "agent"
   environment:
     KUBECONFIG: "{{ kubeconfig_file }}"
-  include: agent.yaml
+  include_tasks: agent.yaml
 
 - name: Day2 for SNO install
   when: install_type == "sno" or install_type == "normal"
   environment:
     KUBECONFIG: "{{ kubeconfig_file }}"
-  include: sno.yaml
+  include_tasks: sno.yaml

@@ -4,20 +4,20 @@
 
 - name: Monitor for agent based installer
   when: install_type == "agent"
-  include: agent.yaml
+  include_tasks: agent.yaml
 
 - name: Monitor for assisted installer
   when: install_type == "assisted"
-  include: assisted.yaml
+  include_tasks: assisted.yaml
 
 - name: Monitor for SNO install
   when: install_type == "sno" or install_type == "normal"
-  include: sno.yaml
+  include_tasks: sno.yaml
 
 - name: Wait ODF Ready
   when: assisted_deploy_odf_operator|bool
-  include: wait-odf.yaml
+  include_tasks: wait-odf.yaml
   
 - name: Post install process
   when: storage_type is defined and storage_type == "nfs"
-  include: post-nfs.yaml
+  include_tasks: post-nfs.yaml

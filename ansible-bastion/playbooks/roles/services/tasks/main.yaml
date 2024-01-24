@@ -2,11 +2,10 @@
 # file: main.yaml
 
   - name: set facts
-    include: set_facts.yaml
+    include_tasks: set_facts.yaml
 
   - name: Setup required services
-    become: true
-    include: setup_services.yaml
+    include_tasks: setup_services.yaml
 
   - name: Systemd daemon reload
     become: true
@@ -27,7 +26,7 @@
   #   loop: "{{ critical_services }}"
   
   - name: Download OCP files
-    include: download_files.yaml
+    include_tasks: download_files.yaml
 
   - name: Setup Local Registry
     when: setup_registry is defined and setup_registry.deploy
@@ -39,7 +38,7 @@
         state: present
 
     - name: Setup Registry
-      include: setup_registry.yaml
+      include_tasks: setup_registry.yaml
 
   - name: Start firewalld service
     become: true

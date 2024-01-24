@@ -54,7 +54,7 @@
   any_errors_fatal: true
   tasks:
     - name: Setup required services
-      include: roles/monitor/tasks/sno-set-boot-order.yaml
+      include_tasks: roles/monitor/tasks/sno-set-boot-order.yaml
 
 - name: Monitor OCP installation progress
   hosts: bastion
