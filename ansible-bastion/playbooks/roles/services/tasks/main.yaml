@@ -72,6 +72,14 @@
       state: restarted
     when: enable_dhcp
 
+  - name: start nfs-server if it is enabled
+    become: true
+    service: 
+      name: nfs-server
+      enabled: yes
+      state: restarted
+    when: storage_type == "nfs"
+    
   - name: Set the local resolv.conf file
     become: true
     template:

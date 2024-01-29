@@ -168,6 +168,7 @@
         - day2_workers | length > 0        
 
   - name: Create NFS export directory
+    when: storage_type == "nfs"
     file:
       path: /export
       state: directory
@@ -178,6 +179,7 @@
       - restart nfs
 
   - name: Copy NFS export conf file
+    when: storage_type == "nfs"
     copy:
       src: ../files/nfs-exports
       dest: /etc/exports

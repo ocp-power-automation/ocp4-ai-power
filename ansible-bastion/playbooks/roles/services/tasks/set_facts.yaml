@@ -48,7 +48,6 @@
       services:
         - dnsmasq
         - httpd
-        - nfs-server
         - haproxy
 
 - set_fact:
