@@ -38,7 +38,7 @@ cluster_id        = ""         # It will use random generated id with cluster_id
 
 #################################
 # define the install type: agent based install, assisted install or SNO
-install_type: "agent"
+install_type = "agent"
 
 #################################
 # variables for assisted install

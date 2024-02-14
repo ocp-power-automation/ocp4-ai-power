@@ -240,7 +240,7 @@ resource "null_resource" "bastion_packages" {
       "#sudo yum update -y --skip-broken",
       "sudo yum install -y wget jq git net-tools vim tar unzip python3.11 python3.11-pip python3-jmespath grub2-tools-extra bind-utils", 
 	    "sudo yum install -y coreos-installer openssl genisoimage nmstate-libs nmstate",
-      "sudo pip3 install jmespath"
+      "sudo pip3.11 install jmespath"
     ]
   }
   provisioner "remote-exec" {
