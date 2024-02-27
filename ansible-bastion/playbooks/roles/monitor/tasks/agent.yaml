@@ -53,7 +53,7 @@
     return_content: yes
     status_code: 200
   register: status_1
-  until: status_1.status == 200
+  until: status_1.status == 200 and status_1.json is defined
   retries: 60
   delay: 10
 
