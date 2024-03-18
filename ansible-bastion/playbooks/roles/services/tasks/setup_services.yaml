@@ -67,6 +67,12 @@
   - name: generate netboot entry for grub2
     shell: grub2-mknetdir --net-directory=/var/lib/tftpboot
 
+  - name: make a link of directory powerpc-ieee1275
+    file:
+      src: /var/lib/tftpboot/boot/grub2/powerpc-ieee1275
+      dest: /var/lib/tftpboot/boot/grub2/powerpc-ieee1275/powerpc-ieee1275
+      state: link
+
   - name: Create TFTP RHCOS dir
     file:
       path: /var/lib/tftpboot/rhcos
@@ -232,4 +238,8 @@
       group: root
       mode: 0555
 
-      
+  - name: Set the local resolv.conf file
+    become: true
+    template:
+      src: ../templates/resolv.conf.j2
+      dest: /etc/resolv.conf

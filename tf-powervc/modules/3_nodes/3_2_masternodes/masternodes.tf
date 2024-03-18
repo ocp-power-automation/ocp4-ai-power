@@ -24,11 +24,11 @@ resource "random_id" "label" {
 }
 
 #master
-data "ignition_systemd_unit" "ramdisk" {
-  count   = var.mount_etcd_ramdisk ? 1 : 0
-  name    = "var-lib-etcd.mount"
-  content = "[Unit]\nDescription=Mount etcd as a ramdisk\nBefore=local-fs.target\n[Mount]\n What=none\nWhere=/var/lib/etcd\nType=tmpfs\nOptions=size=2G\n[Install]\nWantedBy=local-fs.target"
-}
+# data "ignition_systemd_unit" "ramdisk" {
+#   count   = var.mount_etcd_ramdisk ? 1 : 0
+#   name    = "var-lib-etcd.mount"
+#   content = "[Unit]\nDescription=Mount etcd as a ramdisk\nBefore=local-fs.target\n[Mount]\n What=none\nWhere=/var/lib/etcd\nType=tmpfs\nOptions=size=2G\n[Install]\nWantedBy=local-fs.target"
+# }
 
 # data "ignition_config" "master" {
 #   count = var.master["count"]

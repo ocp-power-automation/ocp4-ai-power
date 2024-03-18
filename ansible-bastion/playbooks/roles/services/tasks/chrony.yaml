@@ -61,7 +61,6 @@
     path: /etc/systemd/system/chronyd.service.d
     state: directory
     mode: 0755
-  become: true
 
 - name: Copy restart conf file to the chrony dropin directory
   copy:

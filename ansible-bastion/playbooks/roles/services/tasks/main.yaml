@@ -1,102 +1,74 @@
 ---
 # file: main.yaml
 
-  - name: set facts
-    include_tasks: set_facts.yaml
+- name: set facts
+  include_tasks: set_facts.yaml
+- name: Setup required services
+  include_tasks: setup_services.yaml
+- name: Systemd daemon reload
+  systemd:
+    daemon_reload: yes
+- name: Starting services
+  service:
+    name: "{{ item }}"
+    enabled: yes
+    state: restarted
+  with_items:
+    - "{{ services }}"
+# - name: Enable restart always for critical services
+#   include_tasks: restart_config.yaml
+#   loop: "{{ critical_services }}"
 
-  - name: Setup required services
-    include_tasks: setup_services.yaml
-
-  - name: Systemd daemon reload
-    become: true
-    systemd:
-      daemon_reload: yes
-
-  - name: Starting services
-    become: true
-    service:
-      name: "{{ item }}"
-      enabled: yes
-      state: restarted
-    with_items:
-      - "{{ services }}"
-
-  # - name: Enable restart always for critical services
-  #   include_tasks: restart_config.yaml
-  #   loop: "{{ critical_services }}"
+- name: Download OCP files
+  include_tasks: download_files.yaml
+- name: Setup Local Registry
+  when: setup_registry is defined and setup_registry.deploy
+  block:
+  - name: Install registry packages
+    package:
+      name: "{{ registry }}"
+      state: present
+  - name: Setup Registry
+    include_tasks: setup_registry.yaml
+- name: Start firewalld service
+  systemd:
+    name: firewalld
+    state: restarted
+    enabled: yes
+- name: Open up firewall ports
+  firewalld:
+    permanent: yes
+    immediate: yes
+    state: enabled
+    port: "{{ item[0] }}"
+  delegate_to: "{{ item[1] }}"
+  run_once: true
+  with_nested:
+    - "{{ ports }}"
+    - "{{ ansible_play_batch }}"
+- name: Best effort SELinux repair - Apache
+  shell: "restorecon -vR /var/www/html || true"
+- name: start stand along dhcp if it is enabled
+  service: 
+    name: dhcpd
+    enabled: yes
+    state: restarted
+  when: enable_dhcp
+- name: start nfs-server if it is enabled
+  service: 
+    name: nfs-server
+    enabled: yes
+    state: restarted
+  when: storage_type == "nfs"
+- name: stop haproxy when there is no need
+  service:
+    name: haproxy
+    state: stopped
+  when: dhcp.api_vip is defined or ( masters | length == 1 and bootstrap is not defined )
   
-  - name: Download OCP files
-    include_tasks: download_files.yaml
-
-  - name: Setup Local Registry
-    when: setup_registry is defined and setup_registry.deploy
-    block:
-    - name: Install registry packages
-      become: true
-      package:
-        name: "{{ registry }}"
-        state: present
-
-    - name: Setup Registry
-      include_tasks: setup_registry.yaml
-
-  - name: Start firewalld service
-    become: true
-    systemd:
-      name: firewalld
-      state: restarted
-      enabled: yes
-
-  - name: Open up firewall ports
-    become: true
-    firewalld:
-      permanent: yes
-      immediate: yes
-      state: enabled
-      port: "{{ item[0] }}"
-    delegate_to: "{{ item[1] }}"
-    run_once: true
-    with_nested:
-      - "{{ ports }}"
-      - "{{ ansible_play_batch }}"
-
-  - name: Best effort SELinux repair - Apache
-    become: true
-    shell: "restorecon -vR /var/www/html || true"
-
-  - name: start stand along dhcp if it is enabled
-    become: true
-    service: 
-      name: dhcpd
-      enabled: yes
-      state: restarted
-    when: enable_dhcp
-
-  - name: start nfs-server if it is enabled
-    become: true
-    service: 
-      name: nfs-server
-      enabled: yes
-      state: restarted
-    when: storage_type == "nfs"
-    
-  - name: Set the local resolv.conf file
-    become: true
-    template:
-      src: ../templates/resolv.conf.j2
-      dest: /etc/resolv.conf
-
-  - name: stop haproxy when there is no need
-    become: true
-    service:
-      name: haproxy
-      state: stopped
-    when: dhcp.api_vip is defined or ( masters | length == 1 and bootstrap is not defined )
-    
-  # - name: stop dhcpd when it is not enabled
-  #   become: true
-  #   service:
-  #     name: dhcpd
-  #     state: stopped
-  #   when: not enable_dhcp
+# - name: stop dhcpd when it is not enabled
+#   service:
+#     name: dhcpd
+#     state: stopped
+#   when: not enable_dhcp
 

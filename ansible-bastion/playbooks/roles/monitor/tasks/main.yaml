@@ -19,5 +19,4 @@
   include_tasks: wait-odf.yaml
   
 - name: Post install process
-  when: storage_type is defined and storage_type == "nfs"
   include_tasks: post-nfs.yaml

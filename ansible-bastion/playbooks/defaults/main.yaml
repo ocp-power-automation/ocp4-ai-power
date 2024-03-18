@@ -70,6 +70,7 @@ public_ssh_key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
 ###################################
 # Variables for customization 
 rhcos_kernel_options: []
+rhcos_pre_kernel_options: []
 sysctl_tuned_options: false
 powervm_rmc: false
 
