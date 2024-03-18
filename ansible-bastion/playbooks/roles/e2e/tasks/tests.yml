@@ -1,0 +1,128 @@
+---
+# tasks tests for ocp4 e2e
+- name: Set test and results directory path
+  set_fact:
+    test_dir: "{{ e2e_tests_dir }}/src/github.com/openshift"
+    results_dir: "{{ ansible_env.HOME }}/e2e_tests_results"
+    repository_command: ""
+
+- name: Set repository command -{4.7, 4.8, 4.9, 4.10}
+  set_fact:
+    repository_command: "--from-repository quay.io/multi-arch/community-e2e-images"
+  when: e2e_tests_git_branch == "release-4.7" or e2e_tests_git_branch == "release-4.8" or e2e_tests_git_branch == "release-4.9" or e2e_tests_git_branch == "release-4.10"
+
+# Check Nodes statuse2e_tests_results
+- name: Check all nodes are Ready
+  shell: oc wait --all --for=condition=Ready nodes --timeout=300s
+
+# Check CO status
+- name: Check if all co are in AVAILABLE state and check no any co are in PROGRESSING state and DEGRADED state
+  shell: oc get co -n default --no-headers | awk '{ print $3 $4 $5 }' | grep -w -v TrueFalseFalse | wc -l
+  register: co_status
+  until: co_status.stdout|int == 0
+  retries: 30
+  delay: 120
+  ignore_errors: true
+
+- name: Fail if Cluster operators are not in good status
+  fail:
+    msg: "Cluster operators are not in good status. Skipping E2E tests !!"
+  when: 0 != co_status.stdout|int
+
+# Check PODS
+- name: Verify all PODS are Running or Completed
+  shell: oc get pods -A | awk 'NR>1 {if($4!="Running" && $4!="Completed" ){print $2" "$4}}'
+  register: pods_status
+  until: pods_status.stdout|length == 0
+  retries: 5
+  delay: 10 # changed from 60
+  ignore_errors: true
+
+- debug:
+    msg: "Unhealthy PODS: {{ pods_status.stdout_lines }}"
+  when: 0 != pods_status.stdout|length
+
+- name: Get OCP pull-secret and set auth file in the default location
+  become: true
+  shell: |
+    oc get secret/pull-secret -n openshift-config -o json | jq -r '.data.".dockerconfigjson"' | base64 -d > authfile
+    mkdir -p /run/user/0/containers/
+    cp authfile /run/user/0/containers/auth.json
+  when: e2e_tests_git_branch == 'release-4.15'  
+
+# Running E2E
+- name: Prepare test suites and run e2e tests
+  shell: |
+    openshift-tests run openshift/conformance/parallel --dry-run | ./invert_excluded.py excluded_tests > test-suite.txt
+    openshift-tests run -f ./test-suite.txt {{ repository_command }} -o {{ results_dir }}/conformance-parallel-out-0.txt --junit-dir {{ results_dir }}/conformance-parallel > {{ results_dir }}/openshift-cmd-out-log-0.txt 2>&1
+    sed -e 's/\"/\\"/g;s/.*/\"&\"/'  {{ results_dir }}/conformance-parallel-out-0.txt   | awk '/Failing tests:/,EOF' | tail -n +3 | head -n -4 > {{ results_dir }}/failed-e2e-results.txt
+  args:
+    chdir: "{{ test_dir }}/origin"
+  environment: "{{ e2e_env }}"
+  register: opp
+  when: co_status.stdout|int == 0
+
+# Re-Running E2E
+- name: Re run e2e failed tests
+  shell: |
+    cnt=0
+    IFS=' ' read -ra ADDR1 <<< $(cat {{ results_dir }}/openshift-cmd-out-log-0.txt | tail -1 | grep -o "error: [0-9]* fail, [0-9]* pass, [0-9]* skip (\([0-9]*h[0-9]*m[0-9]*s\|[0-9]*m[0-9]*s\|[0-9.]*s\))")
+    if  [ "0" -ne "$(wc -l < "{{ results_dir }}/failed-e2e-results.txt")" ]
+    then
+      # Storing start time
+      START_TIME=$(date +%s);
+
+      # Storing the hours, minutes and seconds of the first e2e execution
+      IFS="hm" read -d '' hr min sec<<< $(echo ${ADDR1[7]} | sed -e 's/[()s]//g')
+
+      while [ $cnt -lt 5 ]
+      do
+        f_test="$(wc -l < "{{ results_dir }}/failed-e2e-results.txt")"
+        cnt=$(( $cnt + 1 ))
+        openshift-tests run -f {{ results_dir }}/failed-e2e-results.txt {{ repository_command }} -o {{ results_dir }}/conformance-parallel-out-${cnt}.txt --junit-dir {{ results_dir }}/conformance-parallel &> {{ results_dir }}/openshift-cmd-out-log-${cnt}.txt
+        sed -e 's/\"/\\"/g;s/.*/\"&\"/' "{{ results_dir }}/conformance-parallel-out-${cnt}.txt" | awk '/Failing tests:/,EOF' | tail -n +3 | head -n -4 > {{ results_dir }}/failed-e2e-results.txt
+        awk -i inplace '/\S/' "{{ results_dir }}/failed-e2e-results.txt"
+
+        IFS=' ' read -ra ADDR2 <<< $(cat {{ results_dir }}/openshift-cmd-out-log-${cnt}.txt | tail -1 | grep -o "error: [0-9]* fail, [0-9]* pass, [0-9]* skip (\([0-9]*h[0-9]*m[0-9]*s\|[0-9]*m[0-9]*s\|[0-9.]*s\))")
+        # Calculating the passed and skipped test cases
+        if [ ${{ "{" }}{{ "#" }}ADDR2[@]} -eq "5" ]
+        then
+          ADDR1[3]=$((${ADDR2[0]} + ${ADDR1[3]}))
+          ADDR1[5]=$((${ADDR2[2]} + ${ADDR1[5]}))
+          ADDR2[1]=0
+        else
+          ADDR1[3]=$((${ADDR2[3]} + ${ADDR1[3]}))
+          ADDR1[5]=$((${ADDR2[5]} + ${ADDR1[5]}))
+        fi
+
+        # exiting the loop if no new test passes
+        if [ "0" -eq "$(wc -l < "{{ results_dir }}/failed-e2e-results.txt")" ] || [ $f_test -eq "$(wc -l < "{{ results_dir }}/failed-e2e-results.txt")" ]
+        then
+            break
+        fi
+      done
+
+      # Calculating time required for e2e execution
+      END_TIME=$(date +%s);
+      diff=$(($sec + END_TIME - START_TIME))
+      hrs=$(($hr + ($min + $diff/60)/60))
+      mins=$((($min + $diff/60)%60))
+      secs=$(($diff%60))
+      e2e_time="(${hrs}h${mins}m${secs}s)"
+
+      mv {{ results_dir }}/conformance-parallel-out-${cnt}.txt {{ results_dir }}/conformance-parallel-out.txt
+      echo " ${ADDR2[1]} fail, ${ADDR1[3]} pass, ${ADDR1[5]} skip $e2e_time" >  {{ results_dir }}/summary.txt
+    else
+       mv {{ results_dir }}/conformance-parallel-out-0.txt {{ results_dir }}/conformance-parallel-out.txt
+       summary=$(cat {{ results_dir }}/openshift-cmd-out-log-0.txt | tail -1 | grep -o "error: [0-9]* fail, [0-9]* pass, [0-9]* skip (\([0-9]*h[0-9]*m[0-9]*s\|[0-9]*m[0-9]*s\|[0-9.]*s\))")
+       sed -e 's/\"/\\"/g;s/.*/\"&\"/'  {{ results_dir }}/conformance-parallel-out.txt   | awk '/Failing tests:/,EOF' | tail -n +3 | head -n -4 > {{ results_dir }}/failed-e2e-results.txt
+       echo $summary |sed 's/error://' >> {{ results_dir }}/summary.txt
+    fi
+  args:
+    chdir: "{{ test_dir }}/origin"
+    executable: /bin/bash
+  environment: "{{ e2e_env }}"
+  register: op
+  when: co_status.stdout|int == 0 and e2e_retest is defined and e2e_retest
+  ignore_errors: true
+

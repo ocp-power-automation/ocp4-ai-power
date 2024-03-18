@@ -1,0 +1,119 @@
+---
+# tasks setup for ocp4 e2e
+- name: Install required packages
+  become: true
+  package:
+    name:
+      - git
+    state: latest
+
+- name: install the 'Development tools' package group
+  become: true
+  package: name="@Development tools" state=latest
+  when:  ansible_distribution == 'CentOS' or
+         ansible_distribution == 'RedHat' or
+         ansible_distribution == 'Fedora'
+
+- name: install the 'Build Essential' package group
+  become: true
+  package: name="build-essential" state=latest
+  when: ansible_distribution == 'Debian' or
+        ansible_distribution == 'Ubuntu'
+
+- name: Set test and results directory path
+  set_fact:
+    test_dir: "{{ e2e_tests_dir }}/src/github.com/openshift"
+    results_dir: "{{ ansible_env.HOME }}/e2e_tests_results"
+    bin_path: "{{ e2e_tests_dir }}/src/github.com/openshift/origin/openshift-tests"
+    repository_command: ""
+
+- name: Set repository command -{4.7, 4.8, 4.9, 4.10}
+  set_fact:
+    repository_command: "--from-repository quay.io/multi-arch/community-e2e-images"
+  when: e2e_tests_git_branch == "release-4.7" or e2e_tests_git_branch == "release-4.8" or e2e_tests_git_branch == "release-4.9" or e2e_tests_git_branch == "release-4.10"
+
+- name: Create test directory
+  file:
+    path: "{{ test_dir }}"
+    state: "{{ item }}"
+    mode: '0755'
+  with_items:
+  - absent
+  - directory
+
+- name: Remove existing directory
+  become: true
+  file:
+    path: "/usr/local/go"
+    state: absent
+
+- name: Download and untar golang
+  become: true  
+  unarchive:
+    src: "{{ golang_tarball }}"
+    dest: "/usr/local/"
+    remote_src: yes
+
+- name: Clone e2e tests repo
+  git:
+    repo: "{{ e2e_tests_git }}"
+    dest: "{{ test_dir }}/origin"
+    version: "{{ e2e_tests_git_branch }}"
+
+- name: Copy invert_excluded python script
+  template:
+    src: ../files/invert_excluded.py
+    dest: "{{ test_dir }}/origin/invert_excluded.py"
+    mode: '0755'
+
+- name: Add text for running in debian based OS
+  shell:
+    chdir: "{{ test_dir }}/origin"
+    cmd: sed -i '1s/^/SHELL := \/bin\/bash \n/' Makefile && sed -i '1s/^/#!\/usr\/bin\/python3 \n/' invert_excluded.py
+  when: ansible_distribution == 'Debian' or
+        ansible_distribution == 'Ubuntu'
+
+- name: Run make target
+  make:
+    chdir: "{{ test_dir }}/origin"
+    target: WHAT=cmd/openshift-tests
+  environment: "{{ e2e_env }}"
+
+- name: Copy openshift-tests binary
+  become: true
+  copy:
+   src: "{{ bin_path }}"
+   remote_src: true
+   dest: "/usr/local/bin/"
+   mode: '0755'
+
+- name: Copy kube test repo list
+  template:
+    src: ../files/kube-test-repo-list
+    dest: /tmp/kube-test-repo-list
+    mode: '0755'
+
+- name: Download exclude e2e tests list file
+  when: e2e_tests_exclude_list_url != "" and github_token != ""
+  get_url:
+    url: "{{ e2e_tests_exclude_list_url }}"
+    dest: "{{ test_dir }}/origin/excluded_tests"
+    headers:
+      Authorization: "token {{ github_token }}"
+      Accept: application/vnd.github.v3.raw
+
+- name: Create exclude e2e tests list
+  when: e2e_tests_exclude_list_url == ""
+  file:
+    path: "{{ test_dir }}/origin/excluded_tests"
+    state: touch
+    mode: u=rw,g=r,o=r
+
+- name: Create results directory
+  file:
+    path: "{{ results_dir }}"
+    state: "{{ item }}"
+    mode: '0755'
+  with_items:
+  - absent
+  - directory

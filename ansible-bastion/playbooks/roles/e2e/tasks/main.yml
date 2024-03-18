@@ -1,0 +1,8 @@
+---
+  - name: Setup e2e environment
+    import_tasks: setup.yml
+    when: e2e_action == "setup" or e2e_action == "all"
+
+  - name: Run e2e tests
+    import_tasks: tests.yml
+    when: e2e_action == "test" or e2e_action == "all"
