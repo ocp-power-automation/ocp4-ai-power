@@ -160,6 +160,4 @@
   get_url:
     url: "{{ infraenv_result2.json.download_url }}"
     dest: "{{ workdir }}/{{install_type}}.iso"
-    headers:
-      Authorization: "{{ api_token }}"
     force: yes

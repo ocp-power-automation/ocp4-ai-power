@@ -11,7 +11,7 @@
         - "/var/www/html/install/rootfs.img"
         - "/var/lib/tftpboot/rhcos/initramfs.img"
         - "/var/lib/tftpboot/rhcos/kernel"
-    when: force_ocp_download or install_type == "normal" or install_type == "sno"
+    when: force_ocp_download or install_type != "agent"
 
   - name: Downloading OCP4 rhcos-live.iso
     when: rhcos_iso is defined and force_ocp_download
@@ -21,26 +21,29 @@
         mode: 0555
 
   - name: Download RHCOS images
-    when: force_ocp_download or install_type == "normal" or install_type == "sno"
+    when: force_ocp_download or install_type != "agent"
     block:
     - name: Downloading OCP4 installer rootfs
       get_url:
         url: "{{ rhcos_rootfs }}"
         dest: /var/www/html/install/rootfs.img
         mode: 0555
-
+        force: true
+        
     - name: Downloading OCP4 installer initramfs
       get_url:
         url: "{{ rhcos_initramfs }}"
         dest: /var/lib/tftpboot/rhcos/initramfs.img
         mode: 0555
+        force: true
 
     - name: Downloading OCP4 installer kernel
       get_url:
         url: "{{ rhcos_kernel }}"
         dest: /var/lib/tftpboot/rhcos/kernel
         mode: 0555
-      
+        force: true
+
   - name: Preparing OCP client
     when: ocp_client is defined
     block:

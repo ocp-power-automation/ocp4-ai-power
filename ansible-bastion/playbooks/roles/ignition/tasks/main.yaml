@@ -43,7 +43,7 @@
     chdir: "{{ workdir }}"
 
 - name: Copy pxe files to right place
-  when: force_ocp_download != true and (install_type == "agent" or install_type == "assisted")
+  when: install_type == "agent"
   block:
   - name: Host initramfs.img
     become: true
