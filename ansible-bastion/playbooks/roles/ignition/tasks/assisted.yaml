@@ -152,6 +152,10 @@
     status_code: 200
   register: infraenv_result2
 
+- name: print the ISO download URL
+  debug:
+    msg: "ISO_URL: {{ infraenv_result2.json.download_url }}"
+
 - name: Download the discovery ISO
   get_url:
     url: "{{ infraenv_result2.json.download_url }}"
