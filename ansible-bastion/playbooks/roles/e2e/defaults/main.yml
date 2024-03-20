@@ -4,6 +4,7 @@
 e2e_tests_dir: /tmp/openshift_ws
 e2e_tests_git: "https://github.com/openshift/origin"
 e2e_tests_git_branch: "release-4.15"
+e2e_max_parallel_test: 15
 e2e_tests_exclude_list_url: ""
 e2e_upgrade_image: ""
 e2e_retest: false

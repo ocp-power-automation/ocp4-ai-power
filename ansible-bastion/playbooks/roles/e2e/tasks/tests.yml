@@ -54,7 +54,7 @@
 - name: Prepare test suites and run e2e tests
   shell: |
     openshift-tests run openshift/conformance/parallel --dry-run | ./invert_excluded.py excluded_tests > test-suite.txt
-    openshift-tests run -f ./test-suite.txt {{ repository_command }} -o {{ results_dir }}/conformance-parallel-out-0.txt --junit-dir {{ results_dir }}/conformance-parallel > {{ results_dir }}/openshift-cmd-out-log-0.txt 2>&1
+    openshift-tests run -f ./test-suite.txt {{ repository_command }} --max-parallel-tests {{ e2e_max_parallel_test }} -o {{ results_dir }}/conformance-parallel-out-0.txt --junit-dir {{ results_dir }}/conformance-parallel > {{ results_dir }}/openshift-cmd-out-log-0.txt 2>&1
     sed -e 's/\"/\\"/g;s/.*/\"&\"/'  {{ results_dir }}/conformance-parallel-out-0.txt   | awk '/Failing tests:/,EOF' | tail -n +3 | head -n -4 > {{ results_dir }}/failed-e2e-results.txt
   args:
     chdir: "{{ test_dir }}/origin"
