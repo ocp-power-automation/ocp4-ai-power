@@ -107,11 +107,11 @@
       registry_token=`echo -n "{{ setup_registry.registry_user  | default('admin') }}:{{ setup_registry.registry_password | default('admin') }}" | base64 -w0`
       jq '.auths += {"{{ local_registry }}": {"auth": "'$registry_token'","email": "noemail@localhost"}}' < {{ pull_secret_file }} > {{ pull_secret_file }}-updated
     args:
-      creates: {{ pull_secret_file }}-updated
+      creates: "{{ pull_secret_file }}-updated"
 
   - name: Mirror the registry
     when: setup_registry.autosync_registry
-    shell: oc adm -a {{ pull_secret_file }}-updated release mirror \
+    shell: /usr/local/bin/oc adm -a {{ pull_secret_file }}-updated release mirror \
       --from={{ release_image }} \
       --to={{ local_registry }}/{{ setup_registry.local_repo }} \
       --to-release-image={{ local_registry }}/{{ setup_registry.local_repo }}:{{ setup_registry.release_tag }}
@@ -129,4 +129,4 @@
 
   - name: Mirror NFS image (ppc64le)
     when: setup_registry.autosync_registry and ocp_client_arch == "ppc64le" and storage_type == "nfs"
-    shell: "oc image mirror docker.io/ibmcom/nfs-client-provisioner-ppc64le:latest registry.{{ dns.clusterid }}.{{ dns.domain }}:5000/nfs-client-provisioner-ppc64le:latest -a {{ pull_secret_file }}-updated"
+    shell: "/usr/local/bin/oc image mirror docker.io/ibmcom/nfs-client-provisioner-ppc64le:latest registry.{{ dns.clusterid }}.{{ dns.domain }}:5000/nfs-client-provisioner-ppc64le:latest -a {{ pull_secret_file }}-updated"
