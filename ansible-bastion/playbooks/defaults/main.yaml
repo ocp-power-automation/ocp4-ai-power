@@ -65,6 +65,7 @@ assisted_net_dualstack: false
 assisted_deploy_odf_operator: false
 ####################################
 # default place to find pull-secret and public key id_rsa.pub
+pull_secret_file: "~/.openshift/pull-secret"
 pull_secret: "{{ lookup('file', '~/.openshift/pull-secret') | from_json | to_json }}"
 public_ssh_key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
 ###################################

@@ -100,7 +100,8 @@ install_type: agent
 
 
 ####################################
-# the default place for pull-secret and id_rsa.pub
+# the default place for pull-secret and id_rsa.pub, need to use full path
+# pull_secret_file: "/home/user/.openshift/pull-secret"
 # pull_secret: '{{ lookup("file", "~/.openshift/pull-secret") | from_json | to_json }}'
 # public_ssh_key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
 

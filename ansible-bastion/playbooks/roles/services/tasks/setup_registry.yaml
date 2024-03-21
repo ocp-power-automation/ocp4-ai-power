@@ -72,8 +72,8 @@
   shell: podman ps | grep local-registry
   register: pod_state
   until: pod_state.stdout != ""
-  retries: 4
-  delay: 15
+  retries: 10
+  delay: 30
 
 - name: Allow traffic at local registry port
   firewalld:
@@ -105,13 +105,13 @@
   - name: Generate the base64-encoded user name and password or token for your mirror registry
     shell: |
       registry_token=`echo -n "{{ setup_registry.registry_user  | default('admin') }}:{{ setup_registry.registry_password | default('admin') }}" | base64 -w0`
-      jq '.auths += {"{{ local_registry }}": {"auth": "'$registry_token'","email": "noemail@localhost"}}' < ~/.openshift/pull-secret > ~/.openshift/pull-secret-updated
+      jq '.auths += {"{{ local_registry }}": {"auth": "'$registry_token'","email": "noemail@localhost"}}' < {{ pull_secret_file }} > {{ pull_secret_file }}-updated
     args:
-      creates: ~/.openshift/pull-secret-updated
+      creates: {{ pull_secret_file }}-updated
 
   - name: Mirror the registry
     when: setup_registry.autosync_registry
-    shell: oc adm -a ~/.openshift/pull-secret-updated release mirror \
+    shell: oc adm -a {{ pull_secret_file }}-updated release mirror \
       --from={{ release_image }} \
       --to={{ local_registry }}/{{ setup_registry.local_repo }} \
       --to-release-image={{ local_registry }}/{{ setup_registry.local_repo }}:{{ setup_registry.release_tag }}
@@ -129,4 +129,4 @@
 
   - name: Mirror NFS image (ppc64le)
     when: setup_registry.autosync_registry and ocp_client_arch == "ppc64le" and storage_type == "nfs"
-    shell: "oc image mirror docker.io/ibmcom/nfs-client-provisioner-ppc64le:latest registry.{{ dns.clusterid }}.{{ dns.domain }}:5000/nfs-client-provisioner-ppc64le:latest -a ~/.openshift/pull-secret-updated"
+    shell: "oc image mirror docker.io/ibmcom/nfs-client-provisioner-ppc64le:latest registry.{{ dns.clusterid }}.{{ dns.domain }}:5000/nfs-client-provisioner-ppc64le:latest -a {{ pull_secret_file }}-updated"
