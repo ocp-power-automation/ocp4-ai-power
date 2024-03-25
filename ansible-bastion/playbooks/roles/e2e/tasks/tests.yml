@@ -3,8 +3,14 @@
 - name: Set test and results directory path
   set_fact:
     test_dir: "{{ e2e_tests_dir }}/src/github.com/openshift"
-    results_dir: "{{ ansible_env.HOME }}/e2e_tests_results"
+    results_dir: "{{ ansible_env.HOME }}/{{ e2e_tests_results }}"
     repository_command: ""
+
+- name: create result dir {{ results_dir }}
+  file:
+    path: "{{ results_dir }}"
+    state: directory
+    mode: '0755'
 
 - name: Set repository command -{4.7, 4.8, 4.9, 4.10}
   set_fact:
@@ -50,10 +56,18 @@
     cp authfile /run/user/0/containers/auth.json
   when: e2e_tests_git_branch == 'release-4.15'  
 
+- name: Process skip test cases
+  when: e2e_tests_skip != "" and e2e_tests_exclude_list_url == ""
+  shell: |
+    openshift-tests run {{ e2e_tests }} --dry-run | grep "{{ e2e_tests_skip }}" >> excluded_tests
+  args:
+    chdir: "{{ test_dir }}/origin"
+  environment: "{{ e2e_env }}"
+
 # Running E2E
 - name: Prepare test suites and run e2e tests
   shell: |
-    openshift-tests run openshift/conformance/parallel --dry-run | ./invert_excluded.py excluded_tests > test-suite.txt
+    openshift-tests run {{ e2e_tests }} --dry-run | ./invert_excluded.py excluded_tests > test-suite.txt
     openshift-tests run -f ./test-suite.txt {{ repository_command }} --max-parallel-tests {{ e2e_max_parallel_test }} -o {{ results_dir }}/conformance-parallel-out-0.txt --junit-dir {{ results_dir }}/conformance-parallel > {{ results_dir }}/openshift-cmd-out-log-0.txt 2>&1
     sed -e 's/\"/\\"/g;s/.*/\"&\"/'  {{ results_dir }}/conformance-parallel-out-0.txt   | awk '/Failing tests:/,EOF' | tail -n +3 | head -n -4 > {{ results_dir }}/failed-e2e-results.txt
   args:
