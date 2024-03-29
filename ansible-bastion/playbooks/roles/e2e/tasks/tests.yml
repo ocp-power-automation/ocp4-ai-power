@@ -40,7 +40,7 @@
   shell: oc get pods -A | awk 'NR>1 {if($4!="Running" && $4!="Completed" ){print $2" "$4}}'
   register: pods_status
   until: pods_status.stdout|length == 0
-  retries: 5
+  retries: 3
   delay: 10 # changed from 60
   ignore_errors: true
 
@@ -56,10 +56,14 @@
     cp authfile /run/user/0/containers/auth.json
   when: e2e_tests_git_branch == 'release-4.15'  
 
+- name: Show e2e_tests_skip
+  debug:
+    msg: "e2e test skip: {{ e2e_tests_skip }}"
+
 - name: Process skip test cases
   when: e2e_tests_skip != "" and e2e_tests_exclude_list_url == ""
   shell: |
-    openshift-tests run {{ e2e_tests }} --dry-run | grep "{{ e2e_tests_skip }}" >> excluded_tests
+    openshift-tests run {{ e2e_tests }} --dry-run | grep "{{ e2e_tests_skip }}" > excluded_tests
   args:
     chdir: "{{ test_dir }}/origin"
   environment: "{{ e2e_env }}"
