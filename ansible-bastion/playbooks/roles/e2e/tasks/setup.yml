@@ -23,7 +23,7 @@
 - name: Set test and results directory path
   set_fact:
     test_dir: "{{ e2e_tests_dir }}/src/github.com/openshift"
-    results_dir: "{{ ansible_env.HOME }}/e2e_tests_results"
+    results_dir: "{{ ansible_env.HOME }}/{{ e2e_tests_results }}"
     bin_path: "{{ e2e_tests_dir }}/src/github.com/openshift/origin/openshift-tests"
     repository_command: ""
 
@@ -48,7 +48,7 @@
     state: absent
 
 - name: Download and untar golang
-  become: true  
+  become: true
   unarchive:
     src: "{{ golang_tarball }}"
     dest: "/usr/local/"

@@ -2,6 +2,10 @@
 - name: Log into RH SSO API to get API_TOKEN
   when: assisted_token != ""
   block:
+  # - name: Show assisted_token
+  #   debug:
+  #     msg: "{{ assisted_token }}"
+
   - name: Get API_TOKEN
     uri:
       url: https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token
@@ -19,7 +23,7 @@
     vars:
       jmesquery: "access_token"
 
-- name: Set API_TOKEN in main 
+- name: Set API_TOKEN in main
   block:
     - assert:
         that: "{{ assisted_token != '' }}"

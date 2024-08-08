@@ -3,7 +3,7 @@
     "name": "{{ dns.clusterid }}_infra-env",
     "cpu_architecture": "{{ rhcos_arch }}",
     "openshift_version": "{{ assisted_rhcos_version }}",
-    "image_type": "minimal-iso",
+    "image_type": "{{ assisted_iso_type }}",
     "ssh_authorized_key": "{{ public_ssh_key }}",
     "pull_secret": {{ pull_secret | to_json }}
 }
