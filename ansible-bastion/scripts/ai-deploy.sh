@@ -210,9 +210,12 @@ EOF
 
 deploy() {
   echo "Download openshift-install"
-  download_installer # download installer from mirror site
-  #get_ocp_release    # download installer from release readme
-  #get_ocp_nightly    # download installer from nightly build
+  if [[ "${OCP_RELEASE}" != "nightly" ]]; then
+    download_installer # download installer from mirror site
+    #get_ocp_release    # download installer from release readme
+  else
+    get_ocp_nightly    # download installer from nightly build
+  fi
   echo "Setup deploy configure files"
   setup_env
 
