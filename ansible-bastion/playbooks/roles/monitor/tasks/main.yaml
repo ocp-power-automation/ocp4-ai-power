@@ -17,6 +17,11 @@
 - name: Wait ODF Ready
   when: assisted_deploy_odf_operator|bool
   include_tasks: wait-odf.yaml
-  
+
 - name: Post install process
   include_tasks: post-nfs.yaml
+
+- name: stop httpd after installation completed
+  service:
+    name: httpd
+    state: stopped
