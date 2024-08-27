@@ -3,15 +3,15 @@
 
 API_URL=http://${SERVER_IP}:8090/api/assisted-install/v2
 
-echo "AI components:"
-curl -s ${API_URL}/component-versions | jq .
-
-echo "AI OCP versions:"
+echo "OCP versions at ${API_URL}"
 curl -s ${API_URL}/openshift-versions | jq .
 
 
 get-addition-info() {
     OCP_VERSION=$(curl -s ${API_URL}/openshift-versions | jq .display_name)
+
+    echo "AI components:"
+    curl -s ${API_URL}/component-versions | jq .
 
     echo "AI release sources:"
     curl -s ${API_URL}/release-sources | jq .
