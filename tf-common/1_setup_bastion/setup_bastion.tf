@@ -212,6 +212,8 @@ else # for centos
 		sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-next-release-latest-9.noarch.rpm
 		sudo yum install -y ansible-core
 	else  # for 8.x
+    sudo sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+    sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
 		sudo yum install -y epel-release epel-next-release
 		sudo yum config-manager --set-enabled powertools
 		sudo yum install -y ansible
@@ -238,8 +240,8 @@ resource "null_resource" "bastion_packages" {
   provisioner "remote-exec" {
     inline = [
       "#sudo yum update -y --skip-broken",
-      "sudo yum install -y wget jq git net-tools vim tar unzip python3.11 python3.11-pip python3-jmespath grub2-tools-extra bind-utils", 
-	    "sudo yum install -y coreos-installer openssl genisoimage nmstate-libs nmstate",
+      "sudo yum install -y wget jq git net-tools vim tar unzip python3.11 python3.11-pip python3-jmespath grub2-tools-extra bind-utils",
+	    "sudo yum install -y coreos-installer genisoimage nmstate-libs nmstate firewalld",
       "sudo pip3.11 install jmespath"
     ]
   }
