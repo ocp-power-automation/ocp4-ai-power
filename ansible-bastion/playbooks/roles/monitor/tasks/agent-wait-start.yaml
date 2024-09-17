@@ -3,6 +3,8 @@
   - name: Check installation status
     uri:
       url: "{{ api_url }}/clusters/{{ cluster_id }}"
+      headers:
+        Authorization: "{{ api_token }}"
       method: GET
       body_format: json
       return_content: yes

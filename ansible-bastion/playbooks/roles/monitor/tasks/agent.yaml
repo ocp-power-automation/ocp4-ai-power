@@ -1,11 +1,22 @@
 ---
-- name: Set the default API_URL
+- name: Get agent assisted service access API_TOKEN
+  shell: |
+    sed  's/"\*/"/g' .openshift_install_state.json | jq -r '."gencrypto.AuthConfig".AgentAuthToken'
+  register: api_token_result
+  args:
+    chdir: "{{ workdir }}"
+
+- name: Set variable API_URL and API_TOKEN
   set_fact:
     api_url: "http://{{ masters[0].ipaddr }}:8090/api/assisted-install/v2"
+    api_token: "{{ api_token_result.stdout }}"
+
 
 - name: Get cluster info
   uri:
     url: "{{ api_url }}/infra-envs"
+    headers:
+      Authorization: "{{ api_token }}"
     method: GET
     body_format: json
     return_content: yes
@@ -28,6 +39,8 @@
 - name: Call to all hosts info
   uri:
     url: "{{ api_url }}/infra-envs/{{ infraenv_id }}/hosts"
+    headers:
+      Authorization: "{{ api_token }}"
     method: GET
     body_format: json
     return_content: yes
@@ -48,6 +61,8 @@
 - name: Get cluster status
   uri:
     url: "{{ api_url }}/clusters/{{ cluster_id }}"
+    headers:
+      Authorization: "{{ api_token }}"
     method: GET
     body_format: json
     return_content: yes
@@ -63,6 +78,8 @@
     - name: Get hosts info from infraenv
       uri:
         url: "{{ api_url }}/infra-envs/{{ infraenv_id }}/hosts"
+        headers:
+          Authorization: "{{ api_token }}"
         method: GET
         body_format: json
         return_content: yes
@@ -75,6 +92,8 @@
     - name: set role for masters
       uri:
         url: "{{ api_url }}/infra-envs/{{ infraenv_id }}/hosts/{{ hosts.json | json_query(query) | first }}"
+        headers:
+          Authorization: "{{ api_token }}"
         method: PATCH
         body_format: json
         body: '{ "host_role": "master" }'
@@ -83,10 +102,12 @@
         query: "[?requested_hostname==`{{ item.name }}`].id"
       with_items: "{{ masters }}"
       when: masters | length > 1
-      
+
     - name: set role for workers
       uri:
         url: "{{ api_url }}/infra-envs/{{ infraenv_id }}/hosts/{{ hosts.json | json_query(query) | first }}"
+        headers:
+          Authorization: "{{ api_token }}"
         method: PATCH
         body_format: json
         body: '{ "host_role": "worker" }'
@@ -94,8 +115,8 @@
       vars:
         query: "[?requested_hostname==`{{ item.name }}`].id"
       with_items: "{{ workers }}"
-      when: 
-        - workers is defined 
+      when:
+        - workers is defined
         - workers | length > 0
 
 

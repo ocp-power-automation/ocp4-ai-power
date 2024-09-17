@@ -22,6 +22,7 @@
   include_tasks: post-nfs.yaml
 
 - name: stop httpd after installation completed
+  become: true
   service:
     name: httpd
     state: stopped
