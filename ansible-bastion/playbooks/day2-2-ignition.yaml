@@ -1,9 +1,12 @@
 ---
-- hosts: bastion 
+- hosts: bastion
   vars_files:
     - defaults/main.yaml
   vars:
     kubeconfig_file: "{{ workdir}}/auth/kubeconfig"
+    master_count: "{{ masters | length }}"
+    worker_count: "{{ workers | default([]) | length }}"
+    day2_worker_count: "{{ day2_workers | default([]) | length }}"
   tasks:
   - name: Create day2 workers ignition
-    include_tasks: roles/day2/tasks/assisted-create.yaml
+    include_tasks: roles/day2/tasks/create.yaml

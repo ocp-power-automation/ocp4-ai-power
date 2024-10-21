@@ -20,12 +20,12 @@ interface={{ networkifacename }}
 # set your domain for expand-hosts
 domain={{ dns.clusterid }}.{{ dns.domain | lower }}
 local=/{{ dns.clusterid }}.{{ dns.domain | lower }}/
-{% if dhcp.ingress_vip is defined %}
-address=/apps.{{ dns.clusterid }}.{{ dns.domain | lower }}/{{ dhcp.ingress_vip }}
-{% elif masters | length == 1 and bootstrap is not defined %}
-address=/apps.{{ dns.clusterid }}.{{ dns.domain | lower }}/{{ masters[0].ipaddr }}
-{% elif dhcp.api_vip is defined %}
+{% if dhcp.api_vip is defined %}
 address=/apps.{{ dns.clusterid }}.{{ dns.domain | lower }}/{{ dhcp.api_vip }}
+{% elif dhcp.ingress_vip is defined %}
+address=/apps.{{ dns.clusterid }}.{{ dns.domain | lower }}/{{ dhcp.ingress_vip }}
+{% elif masters | length == 1 and bootstrap is not defined and day2_workers is not defined %}
+address=/apps.{{ dns.clusterid }}.{{ dns.domain | lower }}/{{ masters[0].ipaddr }}
 {% else %}
 address=/apps.{{ dns.clusterid }}.{{ dns.domain | lower }}/{{ helper.ipaddr }}
 {% endif %}
@@ -52,7 +52,7 @@ dhcp-range={{ dhcp.subnet.split('/').0 }},static
 dhcp-option=option:router,{{ dhcp.router }}
 dhcp-option=option:netmask,{{ dhcp.netmask }}
 dhcp-option=option:dns-server,{{ helper.ipaddr }}
-dhcp-option=option:domain-name,{{ dns.clusterid }}.{{ dns.domain | lower }}
+#dhcp-option=option:domain-name,{{ dns.clusterid }}.{{ dns.domain | lower }}
 #dhcp-option=option:domain-search,{{ dns.domain | lower }}
 {% if dhcp.mtu is defined %}
 dhcp-option=option:mtu, {{ dhcp.mtu }}

@@ -5,13 +5,13 @@
 #   set_fact:
 #     day1_cluster_info: '{{ lookup("file", "{{ workdir }}/assisted-create-output.json") | from_json }}'
 
-- name: Get day1 OCP cluster ID 
+- name: Get day1 OCP cluster ID
   environment:
     KUBECONFIG: "{{ kubeconfig_file }}"
   shell: oc get clusterversion -o jsonpath='{.items[].spec.clusterID}'
   register: day1_ocp_cluster_id_result
 
-- name: Set day1 OCP cluster ID 
+- name: Set day1 OCP cluster ID
   set_fact:
     day1_ocp_cluster_id: "{{ day1_ocp_cluster_id_result.stdout }}"
 
@@ -43,7 +43,7 @@
     msg: "Day2 Cluster ID is {{ day2clusterdetails.json.id }}"
 
 - name: Save day2 cluster output to file
-  copy: 
+  copy:
     content:  "{{ day2clusterdetails.json }}"
     dest: "{{ workdir }}/assisted-day2-cluster-request-output.json"
 
@@ -94,7 +94,7 @@
     msg: "Day2 InfraEnv ID is {{ day2infraenvdetails.json.id }}"
 
 - name: Save day2 infraenv output to file
-  copy: 
+  copy:
     content:  "{{ day2infraenvdetails.json }}"
     dest: "{{ workdir }}/assisted-day2-infraenv-request-output.json"
 
@@ -113,7 +113,7 @@
 
 - name: Get ignition from ISO
   shell: |
-    coreos-installer iso ignition show {{ install_type }}-day2.iso > {{ install_type }}-day2.ign
+    coreos-installer iso ignition show {{ install_type }}-day2.iso > worker-{{ install_type }}-day2.ign
   args:
     chdir: "{{ workdir }}"
 
@@ -124,4 +124,4 @@
     dest: /var/www/html/ignition/
     mode: o+r
   with_fileglob:
-    - "{{ workdir }}/{{ install_type }}-day2.ign"
+    - "{{ workdir }}/worker-{{ install_type }}-day2.ign"

@@ -1,13 +1,15 @@
 ---
 # file: main.yaml
-
 - name: set facts
   include_tasks: set_facts.yaml
+
 - name: Setup required services
   include_tasks: setup_services.yaml
+
 - name: Systemd daemon reload
   systemd:
     daemon_reload: yes
+
 - name: Starting services
   service:
     name: "{{ item }}"
@@ -15,14 +17,17 @@
     state: restarted
   with_items:
     - "{{ services }}"
+
 # - name: Enable restart always for critical services
 #   include_tasks: restart_config.yaml
 #   loop: "{{ critical_services }}"
 
 - name: Download OCP files
   include_tasks: download_files.yaml
+  when: day2_workers is not defined
+
 - name: Setup Local Registry
-  when: setup_registry is defined and setup_registry.deploy
+  when: setup_registry is defined and setup_registry.deploy and day2_workers is not defined
   block:
   - name: Install registry packages
     package:
@@ -30,11 +35,13 @@
       state: present
   - name: Setup Registry
     include_tasks: setup_registry.yaml
+
 - name: Start firewalld service
   systemd:
     name: firewalld
     state: restarted
     enabled: yes
+
 - name: Open up firewall ports
   firewalld:
     permanent: yes
@@ -46,26 +53,30 @@
   with_nested:
     - "{{ ports }}"
     - "{{ ansible_play_batch }}"
+
 - name: Best effort SELinux repair - Apache
   shell: "restorecon -vR /var/www/html || true"
-- name: start stand along dhcp if it is enabled
-  service: 
-    name: dhcpd
-    enabled: yes
-    state: restarted
-  when: enable_dhcp
+
+# - name: start stand along dhcp if it is enabled
+#   service:
+#     name: dhcpd
+#     enabled: yes
+#     state: restarted
+#   when: enable_dhcp
+
 - name: start nfs-server if it is enabled
-  service: 
+  service:
     name: nfs-server
     enabled: yes
     state: restarted
   when: storage_type == "nfs"
-- name: stop haproxy when there is no need
-  service:
-    name: haproxy
-    state: stopped
-  when: dhcp.api_vip is defined or ( masters | length == 1 and bootstrap is not defined )
-  
+
+# - name: stop haproxy when there is no need
+#   service:
+#     name: haproxy
+#     state: stopped
+#   when: dhcp.api_vip is defined or ( masters | length == 1 and bootstrap is not defined ) or day2_workers is not defined
+
 # - name: stop dhcpd when it is not enabled
 #   service:
 #     name: dhcpd

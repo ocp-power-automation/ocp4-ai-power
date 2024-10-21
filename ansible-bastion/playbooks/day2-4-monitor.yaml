@@ -5,6 +5,9 @@
     - defaults/main.yaml
   vars:
     kubeconfig_file: "{{ workdir}}/auth/kubeconfig"
+    master_count: "{{ masters | length }}"
+    worker_count: "{{ workers | default([]) | length }}"
+    day2_worker_count: "{{ day2_workers | default([]) | length }}"
   tasks:
   - name: Monitor add day2 workers
-    include_tasks: roles/day2/tasks/assisted-monitor.yaml
+    include_tasks: roles/day2/tasks/monitor.yaml

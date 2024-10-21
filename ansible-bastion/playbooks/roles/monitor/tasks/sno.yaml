@@ -4,6 +4,10 @@
   shell: "{{ openshift_installer }} wait-for bootstrap-complete --log-level {{ log_level }}"
   args:
     chdir: "{{ workdir }}"
+  retries: 3
+  delay: 30
+  register: result
+  until: result.rc == 0
 
 - name: Approve Worker CSRs
   environment:

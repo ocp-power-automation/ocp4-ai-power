@@ -11,7 +11,7 @@
         - "/var/www/html/install/rootfs.img"
         - "/var/lib/tftpboot/rhcos/initramfs.img"
         - "/var/lib/tftpboot/rhcos/kernel"
-    when: force_ocp_download or install_type != "agent"
+    when: force_ocp_download or install_type == "sno" or install_type == "normal" or (install_type == "assisted" and assisted_iso_type != "full-iso")
 
   - name: Preparing OCP client
     when: ocp_client is defined
@@ -62,7 +62,7 @@
         mode: 0555
 
   - name: Download RHCOS images
-    when: force_ocp_download or install_type != "agent"
+    when: force_ocp_download or install_type == "sno" or install_type == "normal" or (install_type == "assisted" and assisted_iso_type != "full-iso")
     block:
     - name: Get CoreOS rootfs.img URL
       shell: /usr/local/bin/openshift-install coreos print-stream-json | jq -r .architectures.ppc64le.artifacts.metal.formats.pxe.rootfs.location

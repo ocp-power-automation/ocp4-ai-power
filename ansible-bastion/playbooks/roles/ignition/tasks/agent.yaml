@@ -19,7 +19,7 @@
       src: "{{ workdir }}/agent-config.yaml"
       dest: "{{ workdir }}/agent-config.yaml.back"
       remote_src: yes
-      force: yes      
+      force: yes
 
   - name: Generate manifest files
     shell: |
@@ -38,6 +38,18 @@
   #     - master
   #     - worker
 
+  # - name: Create Machine Config for disk encryption
+  #   when: luks.enabled|bool and luks.config|length > 0
+  #   shell: |
+  #     cat >> agent-cluster-install.yaml << EOF
+  #     diskEncryption:
+  #       enableOn: all
+  #       mode: tang
+  #       tangServers: "server1": "http://tang-server-1.example.com:7500"
+  #     EOF
+  #   args:
+  #     chdir: "{{ workdir }}/cluster-manifests"
+
   - name: Create ISO image for agent based install
     shell: |
       OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE={{ release_image_override }} {{ openshift_installer }} agent create image --log-level {{ log_level }}
@@ -48,5 +60,3 @@
     command: mv agent.{{ rhcos_arch }}.iso agent.iso
     args:
       chdir: "{{ workdir }}"
-
-

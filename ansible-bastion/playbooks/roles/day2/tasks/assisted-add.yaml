@@ -67,4 +67,4 @@
   until: "day2ocphostsid.json.status == 'added-to-existing-cluster'"
   loop: "{{ day2ocphosts.json|json_query('[*].id')|list }}"
   delay: 30
-  retries: 50
+  retries: 120

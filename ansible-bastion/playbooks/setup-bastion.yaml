@@ -1,34 +1,10 @@
 ---
 # file: main.yml
-- name: Cleanup old files
-  hosts: bastion
-  gather_facts: false
-  any_errors_fatal: false
-  tasks:
-    - name: Clean up work directory
-      file: 
-        path: "{{ workdir }}/"
-        state: absent
+- name: Setup services and ignition for day1
+  when: day2_workers is not defined
+  import_playbook: setup-day1.yaml
 
-- name: Setup services for bastion
-  hosts: bastion
-  vars_files:
-  - defaults/main.yaml
-  handlers:
-  - import_tasks: handlers/main.yml
-  gather_facts: true
-  any_errors_fatal: true
-  become: true
-  roles:
-  - services
+- name: Setup services and ignition for day2
+  when: day2_workers is defined and day2_workers|length > 0
+  import_playbook: setup-day2.yaml
 
-- name: Create OCP ignition file
-  hosts: bastion
-  vars_files:
-  - defaults/main.yaml
-  gather_facts: false
-  any_errors_fatal: true
-  tasks:
-  roles:
-  - ignition
-    

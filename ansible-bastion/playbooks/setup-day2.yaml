@@ -15,7 +15,7 @@
   roles:
   - services
 
-- name: Do day2 tasks to add more workers to exist cluster
+- name: Do day2 tasks to create the ignition and other files for day2 worker
   hosts: bastion
   vars_files:
     - defaults/main.yaml
@@ -27,5 +27,6 @@
     master_count: "{{ masters | length }}"
     worker_count: "{{ workers | default([]) | length }}"
     day2_worker_count: "{{ day2_workers | default([]) | length }}"
-  roles:
-  - day2
+  tasks:
+  - name: Create day2 workers ignition
+    include_tasks: roles/day2/tasks/create.yaml

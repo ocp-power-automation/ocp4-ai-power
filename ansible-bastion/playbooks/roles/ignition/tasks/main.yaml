@@ -3,7 +3,7 @@
 - name: set facts
   include_tasks: set_facts.yaml
 
-- name: check install workdir exist 
+- name: check install workdir exist
   stat:
     path: "{{ workdir }}"
   register: dir_status
@@ -37,8 +37,9 @@
 - name: Get pxe files and ignition from ISO
   when: install_type == "agent" or install_type == "assisted"
   shell: |
-    coreos-installer iso ignition show {{ install_type }}.iso > {{ install_type }}.ign
+    coreos-installer iso ignition show {{ install_type }}.iso > master-{{ install_type }}.ign
     coreos-installer iso extract pxe {{ install_type }}.iso
+    cp master-{{ install_type }}.ign worker-{{ install_type }}.ign
   args:
     chdir: "{{ workdir }}"
 

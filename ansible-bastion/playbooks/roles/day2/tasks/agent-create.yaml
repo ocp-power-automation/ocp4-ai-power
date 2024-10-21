@@ -1,0 +1,26 @@
+---
+# We can just use the worker.ign created at day1, so don't need this section
+- name: Create the ignition for day2 worker of agent installer
+  shell: |
+    oc extract -n openshift-machine-api secret/worker-user-data-managed --keys=userData --to=- > worker-agent-day2.ign
+    sudo cp worker-agent-day2.ign /var/www/html/ignition/.
+  args:
+    chdir: "{{ workdir }}"
+
+# - name: embed the ignition file to rhcos-worker-ign.iso
+#   when: rhcos_iso is defined
+#   shell: "coreos-installer iso ignition embed agent.iso -o rhcos-worker-ign.iso -fi worker.ign"
+#   args:
+#     chdir: "{{ workdir }}"
+
+# - name: Copy first-boot-ppc64le.ign to /www/html/ignition
+#   become: true
+#   vars:
+#     disk: "{{ day2_worker.disk | default( disk )}}"
+#   template:
+#     src: ../templates/first-boot-ppc64le.ign.j2
+#     dest: "/var/www/html/ignition/first-boot-day2-ppc64le.ign"
+
+# - name: Best effort SELinux repair - Apache
+#   become: true
+#   shell: "restorecon -vR /var/www/html || true"

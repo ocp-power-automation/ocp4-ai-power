@@ -18,12 +18,12 @@
 
 - name: Day2 for assisted installer
   when: install_type == "assisted"
-  include_tasks: assisted.yaml
+  include_tasks: assisted-iso.yaml
 
 - name: Day2 for agent based installer
   when: install_type == "agent"
-  include_tasks: agent.yaml
+  include_tasks: agent-create.yaml
 
-- name: Day2 for SNO install
-  when: install_type == "sno" or install_type == "normal"
-  include_tasks: sno.yaml
+# - name: Day2 for SNO install
+#   when: install_type == "sno" or install_type == "normal"
+#   include_tasks: sno.yaml

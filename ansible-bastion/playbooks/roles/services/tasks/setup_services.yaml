@@ -21,14 +21,14 @@
     notify:
       - restart dnsmasq
 
-  - name: Write out dhcp file
-    template:
-      src: ../templates/dhcpd.conf.j2
-      dest: /etc/dhcp/dhcpd.conf
-    notify:
-      - restart dhcpd
-    when: enable_dhcp
-    
+  # - name: Write out dhcp file
+  #   template:
+  #     src: ../templates/dhcpd.conf.j2
+  #     dest: /etc/dhcp/dhcpd.conf
+  #   notify:
+  #     - restart dhcpd
+  #   when: enable_dhcp
+
   - name: Write out haproxy config file
     template:
       src: ../templates/haproxy.cfg.j2
@@ -36,58 +36,83 @@
     notify:
       - restart haproxy
     #when: ( masters | length > 1 or bootstrap is defined ) and ( dhcp.api_vip is not defined or dhcp.ingress_vip is not defined )
-    
-  - name: Set HTTP server and prepare OCP4 bios
-    block:
-    - name: Copy httpd conf file
-      template:
-        src: ../templates/httpd.conf.j2
-        dest: /etc/httpd/conf/httpd.conf
-      notify:
-        - restart httpd
 
-  - name: Create apache directories for installing
-    file:
-        path: "{{ item }}"
+  - name: setup service for day1 tasks
+    when: day2_workers is not defined
+    block:
+    - name: Set HTTP server and prepare OCP4 bios
+      block:
+      - name: Copy httpd conf file
+        template:
+          src: ../templates/httpd.conf.j2
+          dest: /etc/httpd/conf/httpd.conf
+        notify:
+          - restart httpd
+
+      - name: Create apache directories for installing
+        file:
+            path: "{{ item }}"
+            state: directory
+            mode: 0755
+        with_items:
+            - /var/www/html/install
+            - /var/www/html/ignition
+
+    - name: Setup Squid proxy server
+      import_tasks: squid.yaml
+      when: setup_squid_proxy
+
+    - name: Setup time synchronisation with Chrony
+      become: true
+      import_tasks: chrony.yaml
+      when: chronyconfig.enabled
+
+    - name: generate netboot entry for grub2
+      shell: grub2-mknetdir --net-directory=/var/lib/tftpboot
+
+    - name: make a link of directory powerpc-ieee1275
+      file:
+        src: /var/lib/tftpboot/boot/grub2/powerpc-ieee1275
+        dest: /var/lib/tftpboot/boot/grub2/powerpc-ieee1275/powerpc-ieee1275
+        state: link
+
+    - name: Create TFTP RHCOS dir
+      file:
+        path: /var/lib/tftpboot/rhcos
         state: directory
         mode: 0755
-    with_items:
-        - /var/www/html/install
-        - /var/www/html/ignition
 
-  - name: Setup Squid proxy server
-    import_tasks: squid.yaml
-    when: setup_squid_proxy
+    # fix the lpar_netboot failed to get PXE files under SELinux
+    - name: Sel file label to tftpdir_rw_t
+      shell: |
+        semanage fcontext -a -t tftpdir_rw_t "/var/lib/tftpboot(/.*)?"
+        semanage fcontext -a -t tftpdir_rw_t "/var/lib/tftpboot/boot(/.*)?"
+        semanage fcontext -a -t tftpdir_rw_t "/var/lib/tftpboot/boot/grub2(/.*)?"
+        semanage fcontext -a -t tftpdir_rw_t "/var/lib/tftpboot/boot/grub2/powerpc-ieee1275(/.*)?"
+        restorecon -R -v /var/lib/tftpboot
+        cp /var/lib/tftpboot/boot/grub2/powerpc-ieee1275/grub.cfg /var/lib/tftpboot/boot/grub2/powerpc-ieee1275/grub.cfg-0
 
-  - name: Setup time synchronisation with Chrony
-    become: true
-    import_tasks: chrony.yaml
-    when: chronyconfig.enabled
+    - name: setup NFS system
+      when: storage_type =="nfs"
+      block:
+      - name: Create NFS export directory
+        when: storage_type == "nfs"
+        file:
+          path: /export
+          state: directory
+          mode: 0777
+          owner: "{{ owner }}"
+          group: "{{ group }}"
+        notify:
+          - restart nfs
 
-  - name: generate netboot entry for grub2
-    shell: grub2-mknetdir --net-directory=/var/lib/tftpboot
-
-  - name: make a link of directory powerpc-ieee1275
-    file:
-      src: /var/lib/tftpboot/boot/grub2/powerpc-ieee1275
-      dest: /var/lib/tftpboot/boot/grub2/powerpc-ieee1275/powerpc-ieee1275
-      state: link
-
-  - name: Create TFTP RHCOS dir
-    file:
-      path: /var/lib/tftpboot/rhcos
-      state: directory
-      mode: 0755
-
-  # fix the lpar_netboot failed to get PXE files under SELinux
-  - name: Sel file label to tftpdir_rw_t
-    shell: |
-      semanage fcontext -a -t tftpdir_rw_t "/var/lib/tftpboot(/.*)?"
-      semanage fcontext -a -t tftpdir_rw_t "/var/lib/tftpboot/boot(/.*)?"
-      semanage fcontext -a -t tftpdir_rw_t "/var/lib/tftpboot/boot/grub2(/.*)?"
-      semanage fcontext -a -t tftpdir_rw_t "/var/lib/tftpboot/boot/grub2/powerpc-ieee1275(/.*)?"
-      restorecon -R -v /var/lib/tftpboot
-      cp /var/lib/tftpboot/boot/grub2/powerpc-ieee1275/grub.cfg /var/lib/tftpboot/boot/grub2/powerpc-ieee1275/grub.cfg-0
+      - name: Copy NFS export conf file
+        when: storage_type == "nfs"
+        copy:
+          src: ../files/nfs-exports
+          dest: /etc/exports
+        notify:
+          - restart nfs
 
   - name: Generate grub2 config files
     block:
@@ -105,15 +130,15 @@
         - set_fact:
             coreos_inst_url: "coreos.live.rootfs_url=http://{{ helper.ipaddr }}:{{ http_port }}/install/rootfs.img"
 
-    - name: Set day2_ignition
-      block:
-        - assert:
-            that: "{{ install_type == 'assisted' }}"
-        - set_fact:
-            day2_ignition: "{{ install_type }}-day2.ign"
-      rescue:
-        - set_fact:
-            day2_ignition: "worker.ign"
+    # - name: Set day2_ignition
+    #   block:
+    #     - assert:
+    #         that: "{{ install_type == 'assisted' }}"
+    #     - set_fact:
+    #         day2_ignition: "{{ install_type }}-day2.ign"
+    #   rescue:
+    #     - set_fact:
+    #         day2_ignition: "worker.ign"
 
     - name: create grub.cfg
       copy:
@@ -125,7 +150,7 @@
     - name: generate grub entry (bootstrap)
       vars:
         role: bootstrap
-        ignition: "{{ install_type }}.ign"
+        ignition: "bootstrap.ign"
         name: "{{ bootstrap.name }}"
         mac: "{{ bootstrap.macaddr }}"
         ipaddr: "{{ bootstrap.ipaddr }}"
@@ -136,7 +161,7 @@
     - name: generate grub entry (masters)
       vars:
         role: master
-        ignition: "{{ install_type }}.ign"
+        ignition: "master-{{ install_type }}.ign"
         name: "{{ item.name }}"
         mac: "{{ item.macaddr }}"
         ipaddr: "{{ item.ipaddr }}"
@@ -147,7 +172,7 @@
     - name: generate grub entry (workers)
       vars:
         role: worker
-        ignition: "{{ install_type }}.ign"
+        ignition: "worker-{{ install_type }}.ign"
         name: "{{ item.name }}"
         mac: "{{ item.macaddr }}"
         ipaddr: "{{ item.ipaddr }}"
@@ -161,7 +186,7 @@
     - name: generate grub entry (day2_workers)
       vars:
         role: worker
-        ignition: "{{ day2_ignition }}"
+        ignition: "worker-{{ install_type }}-day2.ign"
         name: "{{ item.name }}"
         mac: "{{ item.macaddr }}"
         ipaddr: "{{ item.ipaddr }}"
@@ -171,26 +196,7 @@
       with_items: "{{ day2_workers }}"
       when:
         - day2_workers is defined
-        - day2_workers | length > 0        
-
-  - name: Create NFS export directory
-    when: storage_type == "nfs"
-    file:
-      path: /export
-      state: directory
-      mode: 0777
-      owner: "{{ owner }}"
-      group: "{{ group }}"
-    notify:
-      - restart nfs
-
-  - name: Copy NFS export conf file
-    when: storage_type == "nfs"
-    copy:
-      src: ../files/nfs-exports
-      dest: /etc/exports
-    notify:
-      - restart nfs
+        - day2_workers | length > 0
 
   - name: Copying over nfs-provisioner rbac
     copy:

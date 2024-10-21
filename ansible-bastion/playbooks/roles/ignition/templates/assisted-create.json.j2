@@ -9,7 +9,7 @@
     "high_availability_mode": "Full",
     {% endif %}
     "network_type": "{{ cni_network_provider }}",
-    "user_managed_networking": true,
+
     "ssh_public_key": "{{ public_ssh_key }}",
     "pull_secret": {{ pull_secret | to_json }},
     {% if assisted_net_dualstack|bool %}
@@ -43,12 +43,12 @@
     {% if dhcp.api_vip is defined %}
     "user_managed_networking": false,
     "api_vip": "{{ dhcp.api_vip }}",
-    "api_vips": [ 
+    "api_vips": [
         {  "ip": "{{ dhcp.api_vip }}" }
     ],
     {% if dhcp.ingress_vip is defined %}
     "ingress_vip": "{{ dhcp.ingress_vip }}",
-    "ingress_vips": [ 
+    "ingress_vips": [
         { "ip": "{{ dhcp.ingress_vip }}" }
     ],
     {% endif %}

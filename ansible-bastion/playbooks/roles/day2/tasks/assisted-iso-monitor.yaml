@@ -1,0 +1,110 @@
+---
+- name: Get access Token
+  include_tasks: ../../ignition/tasks/assisted-refresh-token.yaml
+
+- name: Get cluster info from output json file
+  set_fact:
+    cluster_info: '{{ lookup("file", "{{ workdir }}/assisted-cluster-create-output.json") | from_json }}'
+
+- name: Show cluster ID
+  debug:
+    msg: "{{ cluster_info.id }}"
+
+- name: Get cluster infraenv info from output json file
+  set_fact:
+    infraenv_info: '{{ lookup("file", "{{ workdir }}/assisted-infraenv-register-output.json") | from_json }}'
+
+- name: Show cluster infraenv ID
+  debug:
+    msg: "{{ infraenv_info.id }}"
+
+##############
+- name: Call to all hosts info
+  uri:
+    url: "{{ assisted_url }}/infra-envs/{{ infraenv_info.id }}/hosts"
+    method: GET
+    body_format: json
+    return_content: yes
+    headers:
+      Authorization: "{{ api_token }}"
+    status_code: 200
+  register: hosts
+  until: (hosts.json|length) == (master_count|int + worker_count|int + day2_worker_count|int)
+  retries: 30
+  delay: 30
+
+# - name: show host count
+#   debug:
+#     msg: "{{ hosts.json | length }}"
+
+
+# - name: set role for workers
+#   uri:
+#     url: "{{ assisted_url }}/infra-envs/{{ infraenv_info.id }}/hosts/{{ hosts.json | json_query(query) | first }}"
+#     method: PATCH
+#     headers:
+#       Authorization: "{{ api_token }}"
+#     body_format: json
+#     body: '{ "host_role": "worker" }'
+#     status_code: 201
+#   vars:
+#     query: "[?requested_hostname=='{{ item.name }}' || requested_hostname=='{{ item.name }}.{{ dns.clusterid }}.{{ dns.domain }}'].id"
+#   with_items: "{{ day2_workers }}"
+
+
+# - name: check day2 workers status
+#   uri:
+#     url: "{{ assisted_url }}/infra-envs/{{ infraenv_info.id }}/hosts/{{ hosts.json | json_query(query) | first }}"
+#     method: GET
+#     body_format: json
+#     return_content: yes
+#     headers:
+#       Authorization: "{{ api_token }}"
+#     status_code: 200
+#   vars:
+#     query: "[?requested_hostname=='{{ item.name }}' || requested_hostname=='{{ item.name }}.{{ dns.clusterid }}.{{ dns.domain }}'].id"
+#   with_items: "{{ day2_workers }}"
+#   register: added_host
+#   until: (added_host.json.status == 'known')
+#   retries: 30
+#   delay: 30
+
+# - name: show host detail
+#   debug:
+#     msg: "{{ added_host.results[0].json.status }}"
+
+# - name: call install action for the day2 workers
+#   uri:
+#     url: "{{ assisted_url }}/infra-envs/{{ infraenv_info.id }}/hosts/{{ hosts.json | json_query(query) | first }}/actions/install"
+#     method: POST
+#     headers:
+#       Authorization: "{{ api_token }}"
+#     status_code: 202
+#   vars:
+#     query: "[?requested_hostname=='{{ item.name }}' || requested_hostname=='{{ item.name }}.{{ dns.clusterid }}.{{ dns.domain }}'].id"
+#   with_items: "{{ day2_workers }}"
+#   register: day2_install_status
+
+- name: check day2 workers install done
+  uri:
+    url: "{{ assisted_url }}/infra-envs/{{ infraenv_info.id }}/hosts/{{ hosts.json | json_query(query) | first }}"
+    method: GET
+    body_format: json
+    return_content: yes
+    headers:
+      Authorization: "{{ api_token }}"
+    status_code: 200
+  vars:
+    query: "[?requested_hostname=='{{ item.name }}' || requested_hostname=='{{ item.name }}.{{ dns.clusterid }}.{{ dns.domain }}'].id"
+  with_items: "{{ day2_workers }}"
+  register: added_host
+  until: (added_host.json.status == 'added-to-existing-cluster')
+  retries: 120
+  delay: 30
+
+- name: show day2 host status
+  debug:
+    msg: "{{ added_host.results[0].json.status }}"
+
+- name: Approve CSRs for added hosts
+  include_tasks: assisted-csr.yaml

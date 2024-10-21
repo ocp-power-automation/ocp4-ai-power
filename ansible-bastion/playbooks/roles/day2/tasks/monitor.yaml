@@ -1,4 +1,4 @@
----
+# Monitor the process of adding day2 worker nodes
 - name: Get install workdir status
   stat:
     path: "{{ workdir }}"
@@ -11,19 +11,14 @@
   meta: end_play
   when: not dir_status.stat.exists|bool
 
-- set_fact:
-    master_count: "{{ masters | length }}"
-    worker_count: "{{ workers | default([]) | length }}"
-    day2_worker_count: "{{ day2_workers | default([]) | length }}"
-
 - name: Day2 for assisted installer
   when: install_type == "assisted"
-  include_tasks: assisted.yaml
+  include_tasks: assisted-iso-monitor.yaml
 
 - name: Day2 for agent based installer
   when: install_type == "agent"
-  include_tasks: agent.yaml
+  include_tasks: agent-monitor.yaml
 
 - name: Day2 for SNO install
   when: install_type == "sno" or install_type == "normal"
-  include_tasks: sno.yaml
+  include_tasks: assisted-csr.yaml

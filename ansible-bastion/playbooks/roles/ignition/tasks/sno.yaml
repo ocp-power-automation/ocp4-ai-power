@@ -15,7 +15,7 @@
       OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE={{ release_image_override }} openshift-install create manifests --log-level {{ log_level }}
     args:
       chdir: "{{ workdir }}"
-      
+
   - name: Create Machine Config for disk encryption
     when: luks.enabled|bool and luks.config|length > 0
     vars:
@@ -32,7 +32,7 @@
   #     src: ../templates/cluster-network-03-config.yml.j2
   #     dest: "{{ workdir }}/manifests/cluster-network-03-config.yml"
   #   when: cni_network_mtu is defined
- 
+
   - name: Configure RHCOS kernel options via MachineConfig before installation
     when: rhcos_pre_kernel_options | length > 0
     vars:
@@ -43,7 +43,7 @@
     with_items:
       - master
       - worker
-  
+
   - name: Remove the machine yaml files
     file:
       path: "{{ item }}"
@@ -64,14 +64,19 @@
     when: install_type == "normal"
     shell: |
       OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE={{ release_image_override }} openshift-install create ignition-configs --log-level {{ log_level }}
+      mv master.ign master-normal.ign
+      mv worker.ign worker-normal.ign
+      cp worker-normal.ign worker-normal-day2.ign
     args:
       chdir: "{{ workdir }}"
-  
+
   - name: Create ignition file for SNO
     when: install_type == "sno"
     shell: |
       OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE={{ release_image_override }} openshift-install create single-node-ignition-config --log-level {{ log_level }}
-      mv bootstrap-in-place-for-live-iso.ign sno.ign
+      mv bootstrap-in-place-for-live-iso.ign master-sno.ign
+      mv worker.ign worker-sno.ign
+      cp worker-sno.ign worker-sno-day2.ign
     args:
       chdir: "{{ workdir }}"
 

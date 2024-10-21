@@ -1,0 +1,9 @@
+---
+# file: main.yml
+- name: Monitor installation process for day1
+  when: day2_workers is not defined
+  import_playbook: step-4-monitor.yaml
+
+- name: Monitor installation process for day2
+  when: day2_workers is defined and day2_workers|length > 0
+  import_playbook: day2-4-monitor.yaml

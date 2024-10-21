@@ -1,6 +1,6 @@
 - name: Get day1 cluster info from output json file
   set_fact:
-    day1_cluster_info: '{{ lookup("file", "{{ workdir }}/assisted-create-output.json") | from_json }}'
+    day1_cluster_info: '{{ lookup("file", "{{ workdir }}/assisted-cluster-create-output.json") | from_json }}'
 
 - name: Show day1 cluster ID
   debug:
@@ -8,7 +8,7 @@
 
 - name: Get day1 cluster infraenv info from output json file
   set_fact:
-    day1_infraenv_info: '{{ lookup("file", "{{ work_dir }}/assisted-register-output.json") | from_json }}'
+    day1_infraenv_info: '{{ lookup("file", "{{ workdir }}/assisted-infraenv-register-output.json") | from_json }}'
 
 - name: Show day1 cluster infraenv ID
   debug:
@@ -16,7 +16,7 @@
 
 - name: allow to add new host nodes
   uri:
-      url: "{{ assisted_url }}/clusters/{{ day1_cluster_info.id }}/action/allow-add-hosts"
+      url: "{{ assisted_url }}/clusters/{{ day1_cluster_info.id }}/actions/allow-add-hosts"
       method: POST
       headers:
         Content-Type: application/json
@@ -26,6 +26,10 @@
       return_content: yes
       status_code: 202
   register: allowAddHosts
+
+# - name: Show allow add host output
+#   debug:
+#     msg: "{{ allowAddHosts }}"
 
 - name: Retrieve Day2 discovery ISO URL
   uri:
@@ -54,7 +58,7 @@
 
 - name: Get ignition from ISO
   shell: |
-    coreos-installer iso ignition show {{ install_type }}-day2.iso > {{ install_type }}-day2.ign
+    coreos-installer iso ignition show {{ install_type }}-day2.iso > worker-{{ install_type }}-day2.ign
   args:
     chdir: "{{ workdir }}"
 
@@ -65,5 +69,5 @@
     dest: /var/www/html/ignition/
     mode: o+r
   with_fileglob:
-    - "{{ workdir }}/{{ install_type }}-day2.ign"
+    - "{{ workdir }}/worker-{{ install_type }}-day2.ign"
 
