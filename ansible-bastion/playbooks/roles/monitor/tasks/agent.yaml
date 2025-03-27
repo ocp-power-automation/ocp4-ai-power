@@ -23,8 +23,8 @@
     status_code: 200
   register: infraenv_result
   until: infraenv_result.status == 200 and infraenv_result.json | length > 0
-  retries: 60
-  delay: 20
+  retries: 90
+  delay: 30
 
 
 - name: Show cluster infraenv ID
