@@ -1,7 +1,7 @@
 ---
 - name: Get agent assisted service access API_TOKEN
   shell: |
-    sed  's/"\*/"/g' .openshift_install_state.json | jq -r '."gencrypto.AuthConfig".AgentAuthToken'
+    sed  's/"\*/"/g' .openshift_install_state.json | jq -r '.["gencrypto.AuthConfig"] | if has("UserAuthToken") then .UserAuthToken else .AgentAuthToken end'
   register: api_token_result
   args:
     chdir: "{{ workdir }}"
