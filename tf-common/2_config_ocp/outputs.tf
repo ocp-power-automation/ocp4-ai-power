@@ -18,28 +18,7 @@
 #
 ################################################################
 
-variable "bastion_ip" {}
-variable "cluster_id" {}
-
-variable "worker" {
-  default = {
-    instance_type = "m1.xlarge"
-    # rhcos image id
-    image_id = "468863e6-4b33-4e8b-b2c5-c9ef9e6eedf4"
-    count    = 2
-  }
+output "install_status" {
+  depends_on = [null_resource.setup_snat]
+  value      = "CONFIG_OCP_COMPLETED"
 }
-
-variable "scg_id" {}
-variable "openstack_availability_zone" {}
-
-variable "worker_port_ids" {}
-
-
-variable "rhel_username" {}
-variable "private_key" {}
-variable "ssh_agent" {}
-variable "connection_timeout" {}
-variable "jump_host" {}
-variable "install_status" {}
-
