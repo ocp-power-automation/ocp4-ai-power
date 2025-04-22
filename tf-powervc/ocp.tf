@@ -178,24 +178,24 @@ module "config_ocp" {
 
 
 module "bootstrapnode" {
-  depends_on = [module.config_ocp]
   source = "./modules/3_nodes/3_1_bootstrapnode"
 
   bastion_ip                  = module.network.bastion_vip == "" ? module.bastion.bastion_ip[0] : module.network.bastion_vip
   cluster_id                  = local.cluster_id
   bootstrap                   = var.bootstrap
+  install_status              = module.config_ocp.install_status
   scg_id                      = var.scg_id
   openstack_availability_zone = var.openstack_availability_zone
   bootstrap_port_id           = module.network.bootstrap_port_id
 }
 
 module "masternodes" {
-  depends_on = [module.config_ocp]
   source = "./modules/3_nodes/3_2_masternodes"
 
   bastion_ip                  = module.network.bastion_vip == "" ? module.bastion.bastion_ip[0] : module.network.bastion_vip
   cluster_id                  = local.cluster_id
   master                      = var.master
+  install_status              = module.config_ocp.install_status
   scg_id                      = var.scg_id
   openstack_availability_zone = var.openstack_availability_zone
   master_port_ids             = module.network.master_port_ids
@@ -203,12 +203,12 @@ module "masternodes" {
 }
 
 module "workernodes" {
-  depends_on = [module.config_ocp]
   source = "./modules/3_nodes/3_3_workernodes"
 
   bastion_ip                  = module.network.bastion_vip == "" ? module.bastion.bastion_ip[0] : module.network.bastion_vip
   cluster_id                  = local.cluster_id
   worker                      = var.worker
+  install_status              = module.config_ocp.install_status
   scg_id                      = var.scg_id
   openstack_availability_zone = var.openstack_availability_zone
   worker_port_ids             = module.network.worker_port_ids
