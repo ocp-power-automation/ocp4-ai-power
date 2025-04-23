@@ -53,6 +53,7 @@ module "bastion" {
   storage_type                    = local.storage_type
   volume_size                     = var.volume_size
   volume_storage_template         = var.volume_storage_template
+  scg_flavor_is_public            = var.scg_flavor_is_public
 }
 
 module "network" {
@@ -187,6 +188,7 @@ module "bootstrapnode" {
   scg_id                      = var.scg_id
   openstack_availability_zone = var.openstack_availability_zone
   bootstrap_port_id           = module.network.bootstrap_port_id
+  scg_flavor_is_public        = var.scg_flavor_is_public
 }
 
 module "masternodes" {
@@ -200,6 +202,7 @@ module "masternodes" {
   openstack_availability_zone = var.openstack_availability_zone
   master_port_ids             = module.network.master_port_ids
   mount_etcd_ramdisk          = var.mount_etcd_ramdisk
+  scg_flavor_is_public        = var.scg_flavor_is_public
 }
 
 module "workernodes" {
@@ -217,6 +220,7 @@ module "workernodes" {
   ssh_agent                   = var.ssh_agent
   connection_timeout          = var.connection_timeout
   jump_host                   = var.jump_host
+  scg_flavor_is_public        = var.scg_flavor_is_public
 }
 
 module "install" {
