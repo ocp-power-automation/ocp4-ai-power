@@ -1,0 +1,28 @@
+- name: Apply install-config patch for RHCOS-9
+  when: os_image_stream is defined and os_image_stream == "rhel-9"
+  block:
+    - name: Patch cluster for install-config.yaml
+      uri:
+        url: "{{ assisted_url }}/clusters/{{ cluster_info.id }}/install-config"
+        method: PATCH
+        body_format: raw
+        body: '"{\"osImageStream\":\"rhel-9\"}"'
+        headers:
+          Authorization: "{{ api_token }}"
+          Content-Type: "application/json"
+        status_code: 201
+
+    - name: Get install-config
+      uri:
+        url: "{{ assisted_url }}/clusters/{{ cluster_info.id }}/install-config"
+        method: GET
+        body_format: json
+        return_content: yes
+        headers:
+          Authorization: "{{ api_token }}"
+        status_code: 200
+      register: installconfig
+
+    - name: Print out installconfig.json after patch
+      debug:
+        msg: "{{ installconfig.json }}"

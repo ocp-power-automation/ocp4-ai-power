@@ -39,6 +39,7 @@ variable "assisted_url" {}
 variable "assisted_token" {}
 variable "assisted_ocp_version" {}
 variable "assisted_rhcos_version" {}
+variable "assisted_iso_type" {}
 
 variable "bastion_vip" {}
 variable "bastion_ip" {}

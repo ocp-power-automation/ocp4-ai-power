@@ -47,6 +47,7 @@ assisted_ocp_version   = "4.15"
 assisted_rhcos_version = "4.15"
 assisted_url = "https://api.openshift.com/api/assisted-install/v2"
 assisted_token = "xxx..."
+assisted_iso_type = "full-iso" # set "minimal-iso" or "full-iso"
 
 
 ### OpenShift Installation Details
@@ -131,3 +132,4 @@ openshift_rhcos_rootfs    = "https://mirror.openshift.com/pub/openshift-v4/ppc64
 #luks_options                = ["--cipher", "aes-cbc-essiv:sha256"]  #Set List of luks options for the luks encryption
 #luks_wipe_volume             = true  #Configures the luks encrypted partition to be wiped
 #luks_name                   = "root" #Set the value for the user label of Filesystem to be luks encrypted
+#os_image_stream             = ""  # Set to 'rhel-9' or 'rhel-10' to pin the OS image stream.

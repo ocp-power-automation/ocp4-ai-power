@@ -86,6 +86,11 @@ variable "assisted_rhcos_version" {
   description = "The RHCOS version to use with OCP installation"
   default = "4.14"
 }
+
+variable "assisted_iso_type" {
+  description = "The ISO type to generate for assisted installer (e.g. 'full-iso' or 'minimal-iso')"
+  default     = "minimal-iso"
+}
 ################################################################
 # Configure the Instance details
 ################################################################

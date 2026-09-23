@@ -74,9 +74,9 @@ proxy:
   noProxy: .{{ dns.clusterid }}.{{ dns.domain }},{{ no_proxy }}
 {% endif %}
 fips: {{ fips_compliant }}
-{% if tech_preview | string | lower in ['true', 'yes', '1'] %}
+{% if tech_preview is defined and tech_preview | string | lower in ['true', 'yes', '1'] %}
 featureSet: TechPreviewNoUpgrade
 {% endif %}
-{% if os_image_stream in ['rhel-10', 'rhel-9'] %}
+{% if os_image_stream is defined and os_image_stream in ['rhel-10', 'rhel-9'] %}
 osImageStream: {{ os_image_stream }}
 {% endif %}

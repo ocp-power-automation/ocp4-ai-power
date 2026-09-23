@@ -76,6 +76,8 @@ locals {
     assisted_token        = var.assisted_token
     assisted_ocp_version  = var.assisted_ocp_version
     assisted_rhcos_version= var.assisted_rhcos_version
+    assisted_iso_type     = var.assisted_iso_type
+
 
     bootstrap_info = {
       ip   = var.bootstrap_ip,

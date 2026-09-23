@@ -22,6 +22,9 @@
   debug:
     msg: "master:{{ master_count }}, worker:{{ worker_count }}, total: {{ master_count | int + worker_count | int }}"
 
+- name: Patch Cluster for install-config
+  include_tasks: assisted-patch-install-config.yaml
+
 - name: Discover Hosts and Patch Cluster
   include_tasks: assisted-patch-cluster.yaml
 
@@ -29,9 +32,5 @@
   include_tasks: assisted-start-installation.yaml
 
 - name: Wait till OpenShift cluster installed.
-  include_tasks:  assisted-check-installation.yaml
+  include_tasks: assisted-check-installation.yaml
   loop: "{{ range(1,20,1) | list}}"
-
-
-
-

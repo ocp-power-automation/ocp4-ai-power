@@ -1,0 +1,47 @@
+- name: Downloading OCP4 rhcos-live.iso for RHCOS-10
+  when: rhcos_iso is defined and force_ocp_download
+  block:
+    - name: Get CoreOS ISO URL
+      shell: /usr/local/bin/openshift-install coreos print-stream-json | jq -r .architectures.ppc64le.artifacts.metal.formats.iso.disk.location
+      register: rhcos_iso_url
+
+    - name: Download CoreOS ISO
+      get_url:
+        url: "{{ rhcos_iso_url.stdout }}"
+        dest: "/usr/local/src/rhcos-live-ppc64le.iso"
+        mode: 0555
+
+- name: Download RHCOS images for RHCOS-10
+  when:
+    force_ocp_download or install_type == "sno" or install_type == "normal" or
+    (install_type == "assisted" and assisted_iso_type != "full-iso")
+  block:
+    - name: Get CoreOS rootfs.img URL
+      shell: /usr/local/bin/openshift-install coreos print-stream-json | jq -r .architectures.ppc64le.artifacts.metal.formats.pxe.rootfs.location
+      register: rhcos_rootfs_url
+    - name: Downloading CoreOS rootfs.img
+      get_url:
+        url: "{{ rhcos_rootfs_url.stdout }}"
+        dest: /var/www/html/install/rootfs.img
+        mode: 0555
+        force: true
+
+    - name: Get CoreOS initramfs.img URL
+      shell: /usr/local/bin/openshift-install coreos print-stream-json | jq -r .architectures.ppc64le.artifacts.metal.formats.pxe.initramfs.location
+      register: rhcos_initramfs_url
+    - name: Downloading CoreOS initramfs.img
+      get_url:
+        url: "{{ rhcos_initramfs_url.stdout }}"
+        dest: /var/lib/tftpboot/rhcos/initramfs.img
+        mode: 0555
+        force: true
+
+    - name: Get CoreOS kernel URL
+      shell: /usr/local/bin/openshift-install coreos print-stream-json | jq -r .architectures.ppc64le.artifacts.metal.formats.pxe.kernel.location
+      register: rhcos_kernel_url
+    - name: Downloading CoreOS kernel
+      get_url:
+        url: "{{ rhcos_kernel_url.stdout }}"
+        dest: /var/lib/tftpboot/rhcos/kernel
+        mode: 0555
+        force: true
